@@ -606,65 +606,57 @@ build_samba_from_srpm() {
   local MOCK_DIST="${SRPM_DIST}.dc"
   step_info "Using dist tag: ${MOCK_DIST}"
 
-  # ── Build stub repo for DC bootstrap packages ─────────────────────────────
-  # --with dc adds BuildRequires for three packages not in public Rocky 10 repos:
-  #   python3-setproctitle  → only in EPEL (not configured in mock chroot)
-  #   samba-dc              → obsoleted/merged; doesn't exist as a separate pkg
-  #   samba-common-tools    → excluded by repo exclude filters in the chroot
-  # We create minimal stub RPMs that satisfy the BuildRequires so dnf builddep
-  # succeeds, then mock compiles the real packages from source.
+  # ── Build stub repo for circular bootstrap packages ──────────────────────
+  # --with dc adds BuildRequires baked into the Rocky SRPM's binary metadata
+  # for packages that are circular or excluded in the mock chroot:
+  #   samba-dc           → obsoleted/merged into main samba in Rocky 10
+  #   samba-common-tools → excluded by repo exclude filters in the chroot
+  # python3-setproctitle comes from EPEL (configured in mock config below).
+  # Stubs just satisfy dnf builddep — the real packages are compiled from source.
   step_info "Building DC bootstrap stub packages for mock..."
   local STUB_DIR="/root/samba-dc-stubs"
   mkdir -p "$STUB_DIR"
 
-  for stub_name in python3-setproctitle samba-dc samba-common-tools; do
-    local stub_ver="0.1"
-    [[ "$stub_name" == "samba-dc" || "$stub_name" == "samba-common-tools" ]] && stub_ver="4.23.5"
-
-    local stub_spec="/tmp/${stub_name}-stub.spec"
-    cat > "$stub_spec" << SPEC
+  for stub_name in samba-dc samba-common-tools; do
+    cat > "/tmp/${stub_name}-stub.spec" << SPEC
 Name:       ${stub_name}
-Version:    ${stub_ver}
+Version:    4.23.5
 Release:    0.stub
-Summary:    Bootstrap stub for Samba DC build
+Summary:    Bootstrap stub for Samba DC mock build
 License:    GPL-3.0+
 BuildArch:  noarch
 
 %description
-Minimal stub package to satisfy BuildRequires during Samba DC mock build.
-
-%install
-%if "%{name}" == "python3-setproctitle"
-mkdir -p %{buildroot}%{python3_sitelib}
-printf '# stub\ndef setproctitle(t): pass\ndef getproctitle(): return ""\n' \
-  > %{buildroot}%{python3_sitelib}/setproctitle.py
-%endif
+Minimal stub to satisfy circular BuildRequires during Samba DC build.
 
 %files
-%if "%{name}" == "python3-setproctitle"
-%{python3_sitelib}/setproctitle.py
-%endif
 SPEC
 
-    rpmbuild -bb "$stub_spec" \
+    rpmbuild -bb "/tmp/${stub_name}-stub.spec" \
       --define "_rpmdir ${STUB_DIR}" \
       --define "_build_name_fmt %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm" \
       >>"$log" 2>&1 || true
   done
 
-  # Flatten any arch subdirs
-  find "$STUB_DIR" -name "*.rpm" ! -path "$STUB_DIR/*.rpm" \
-    -exec mv {} "$STUB_DIR/" \; 2>/dev/null || true
+  find "$STUB_DIR" -mindepth 2 -name "*.rpm" -exec mv {} "$STUB_DIR/" \; 2>/dev/null || true
   createrepo_c "$STUB_DIR" >>"$log" 2>&1
-  step_ok "Stub repo ready: $(ls "${STUB_DIR}"/*.rpm 2>/dev/null | wc -l) packages"
+  step_ok "Stub repo ready: $(ls "${STUB_DIR}"/*.rpm 2>/dev/null | wc -l) stub packages"
 
-  # ── Write mock config with stub repo + cleared devel excludes ────────────
+  # ── Resolve EPEL baseurl from host (avoids shell vars that break in chroot)
+  local EPEL_URL _os_major
+  _os_major=$(grep -oP '(?<=^VERSION_ID=")[^"]+' /etc/os-release 2>/dev/null | awk -F. '{print $1}')
+  [[ -z "$_os_major" ]] && _os_major="10"
+  EPEL_URL=$(dnf repoinfo epel 2>/dev/null | awk '/^Repo-baseurl/{print $NF; exit}')
+  [[ -z "$EPEL_URL" ]] && \
+    EPEL_URL="https://dl.fedoraproject.org/pub/epel/${_os_major}/Everything/$(uname -m)/"
+  step_info "EPEL: ${EPEL_URL}"
+
+  # ── Write mock config ─────────────────────────────────────────────────────
+  # Adds: stub repo, EPEL (for python3-setproctitle), cleared devel excludes
   local MOCK_CFG_FILE="/etc/mock/rocky-10-x86_64-samba-dc.cfg"
   cat > "$MOCK_CFG_FILE" << MOCKCFG
 include('/etc/mock/rocky-10-x86_64.cfg')
 
-# Provide bootstrap stubs for packages not in public repos
-# and clear devel repo excludes that block samba-common-tools
 config_opts['dnf.conf'] += """
 [samba-dc-stubs]
 name=Samba DC Bootstrap Stubs
@@ -673,9 +665,14 @@ enabled=1
 gpgcheck=0
 priority=1
 
-[devel]
-exclude=
+[epel]
+name=Extra Packages for Enterprise Linux ${_os_major}
+baseurl=${EPEL_URL}
+enabled=1
+gpgcheck=0
 """
+
+config_opts['dnf_builddep_opts'] = ['--setopt=devel.exclude=', '--setopt=appstream.exclude=', '--setopt=baseos.exclude=']
 MOCKCFG
   step_ok "Mock config: ${MOCK_CFG_FILE}"
   local MOCK_BUILD_CFG="rocky-10-x86_64-samba-dc"
