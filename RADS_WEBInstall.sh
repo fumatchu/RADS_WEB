@@ -584,6 +584,35 @@ build_samba_from_srpm() {
   step_info "Setting up mock build environment for Rocky 10..."
   usermod -a -G mock root >>"$log" 2>&1 || true
 
+  # Write a custom mock config that extends the base rocky-10-x86_64 config
+  # but clears all repo exclude= directives.  Rocky's repos exclude certain
+  # samba sub-packages (libwbclient-devel, samba-common-libs, samba-common-tools)
+  # to prevent version mixing, but those are BuildRequires of the SRPM itself
+  # — we need them visible inside the mock chroot.
+  local MOCK_OVERRIDE_CFG="/etc/mock/rocky-10-x86_64-samba-dc.cfg"
+  cat > "$MOCK_OVERRIDE_CFG" << 'MOCKCFG'
+include('/etc/mock/rocky-10-x86_64.cfg')
+# Clear repo excludes so samba bootstrap packages are installable
+config_opts['dnf.conf'] += """
+[baseos]
+exclude=
+
+[appstream]
+exclude=
+
+[crb]
+exclude=
+
+[devel]
+exclude=
+
+[epel]
+exclude=
+"""
+MOCKCFG
+  step_ok "Mock config written: ${MOCK_OVERRIDE_CFG}"
+  local MOCK_CFG_NAME="rocky-10-x86_64-samba-dc"
+
   # ── Download Samba SRPM ───────────────────────────────────────────────────
   step_info "Fetching Samba SRPM from Rocky 10 repos..."
   local SRPM_DIR="/root/samba-srpm"
@@ -635,21 +664,21 @@ build_samba_from_srpm() {
   local MOCK_DIST="${SRPM_DIST}.dc"
   step_info "Using dist tag: ${MOCK_DIST}"
 
-  # --with dc            → enables AD/DC stack in the Samba spec so
-  #                        samba-tool domain provision is built
+  # Use our custom config (clears repo excludes for samba bootstrap packages)
+  # --with dc            → enables full AD/DC stack (samba-tool domain provision)
   # --define dist        → overrides RPM dist macro to match repo NVRs
-  # --enablerepo=epel    → needed for python3-setproctitle (not in devel/crb)
-  # --rpmbuild-opts --nocheck → skips %check test suite which has a circular
+  # --enablerepo=epel    → picks up python3-setproctitle (not in devel/crb)
+  # --rpmbuild-opts=--nocheck → skips %check test suite which has circular
   #                        BuildRequires on samba-dc/samba-common-tools
-  #                        (those packages don't exist yet — we're building them)
-  mock -r "$MOCK_CFG" \
+  MOCK_RESULT="/var/lib/mock/${MOCK_CFG_NAME}/result"
+  mock -r "$MOCK_CFG_NAME" \
     --enablerepo=crb \
     --enablerepo=devel \
     --enablerepo=epel \
     --verbose \
     --with dc \
     --define "dist ${MOCK_DIST}" \
-    --rpmbuild-opts "--nocheck" \
+    --rpmbuild-opts=--nocheck \
     --rebuild "$SRPM_FILE" \
     --resultdir="$MOCK_RESULT" \
     2>&1 \
