@@ -110,6 +110,18 @@ detect_active_interface() {
   section "Network Interface"
   step_info "Detecting active network interface..."
 
+  # Ensure NetworkManager is running
+  if ! systemctl is-active --quiet NetworkManager 2>/dev/null; then
+    step_info "NetworkManager not running — starting it..."
+    systemctl enable --now NetworkManager >/dev/null 2>&1
+    sleep 3
+    if ! systemctl is-active --quiet NetworkManager 2>/dev/null; then
+      dialog --title "Interface Error" --msgbox "NetworkManager could not be started.\nCheck your network configuration." 7 55
+      exit 1
+    fi
+    step_ok "NetworkManager started"
+  fi
+
   INTERFACE=$(nmcli -t -f DEVICE,TYPE,STATE device | grep "ethernet:connected" | cut -d: -f1 | head -n1)
   [[ -z "$INTERFACE" ]] && INTERFACE=$(ip -o -4 addr show up | grep -v ' lo ' | awk '{print $2}' | head -n1)
 
@@ -577,10 +589,17 @@ build_samba_from_srpm() {
 
   # Stream mock output: tee to log (plain), colorize on terminal
   # $'s/.../\x1b[..m&\x1b[0m/' — bash expands \x1b to literal ESC before sed sees it
+  # Detect the dist tag from the SRPM so built RPMs match the repo version
+  # e.g. samba-4.23.5-109.el10_2.src.rpm → dist tag is .el10_2
+  local SRPM_DIST; SRPM_DIST=$(rpm -qp --qf '%{RELEASE}' "$SRPM_FILE" 2>/dev/null \
+    | grep -oP '\.el\d+[^.]*$' || echo ".el10")
+  step_info "Using dist tag: ${SRPM_DIST}"
+
   mock -r "$MOCK_CFG" \
     --enablerepo=crb \
     --enablerepo=devel \
     --verbose \
+    --config-opts="dist='${SRPM_DIST}'" \
     --rebuild "$SRPM_FILE" \
     --resultdir="$MOCK_RESULT" \
     2>&1 \
@@ -611,14 +630,40 @@ build_samba_from_srpm() {
   fi
 
   # ── Install built RPMs ───────────────────────────────────────────────────
-  step_info "Installing built Samba RPMs..."
+  # Install ALL non-src RPMs from the result dir — the Samba SRPM produces
+  # samba-*, python3-samba-*, libsmbclient-*, libwbclient-*, etc.
+  step_info "Installing all built RPMs from mock result..."
   local RPM_COUNT=0
   local INSTALLED_RPMS=()
-  for rpm in "${MOCK_RESULT}"/samba*.rpm; do
+  # Install in one dnf transaction to resolve inter-package deps cleanly
+  local ALL_RPMS=()
+  for rpm in "${MOCK_RESULT}"/*.rpm; do
     [[ "$rpm" == *src.rpm ]] && continue
-    dnf -y install "$rpm" --nogpgcheck --color=never >>"$log" 2>&1 \
-      && { ((RPM_COUNT++)); INSTALLED_RPMS+=("$rpm"); } || true
+    [[ "$rpm" == *debuginfo* ]] && continue
+    [[ "$rpm" == *debugsource* ]] && continue
+    ALL_RPMS+=("$rpm")
   done
+
+  if [[ ${#ALL_RPMS[@]} -gt 0 ]]; then
+    step_info "Installing ${#ALL_RPMS[@]} RPMs in single transaction..."
+    dnf -y install "${ALL_RPMS[@]}" --nogpgcheck --color=never >>"$log" 2>&1
+    if [[ $? -eq 0 ]]; then
+      RPM_COUNT=${#ALL_RPMS[@]}
+      INSTALLED_RPMS=("${ALL_RPMS[@]}")
+    else
+      # dnf may refuse if repo already has a newer dist-tag (e.g. el10_2 vs el10)
+      # Fall back to rpm --force which bypasses version comparison
+      step_info "dnf install failed (possible dist-tag mismatch) — using rpm --force..."
+      rpm -Uvh --force --nodeps "${ALL_RPMS[@]}" >>"$log" 2>&1
+      if [[ $? -eq 0 ]]; then
+        RPM_COUNT=${#ALL_RPMS[@]}
+        INSTALLED_RPMS=("${ALL_RPMS[@]}")
+        step_ok "RPMs installed via rpm --force"
+      else
+        step_fail "rpm --force also failed — see ${log}"
+      fi
+    fi
+  fi
 
   [[ $RPM_COUNT -gt 0 ]] && step_ok "Samba RPMs installed (${RPM_COUNT} packages)" \
     || step_fail "No Samba RPMs installed — check ${log}"
