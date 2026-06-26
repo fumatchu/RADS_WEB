@@ -322,14 +322,22 @@ enable_repos() {
   section "Repository Setup"
   local log="$LOGDIR/repo-setup.log"; : > "$log"
 
-  step_info "Enabling EPEL and CRB repositories..."
+  step_info "Enabling EPEL, CRB, and Devel repositories..."
   dnf -y install epel-release --setopt=install_weak_deps=False --color=never >>"$log" 2>&1
   dnf -y install dnf-plugins-core --setopt=install_weak_deps=False --color=never >>"$log" 2>&1 || true
+
+  # CRB — needed for many build deps
   dnf config-manager --set-enabled crb --color=never >>"$log" 2>&1 \
     || dnf config-manager --enable crb >>"$log" 2>&1 || true
+
+  # Devel — required for python3-setproctitle, samba-dc, samba-common-tools
+  # and python3-talloc-devel (Samba build deps not in CRB or base)
+  dnf config-manager --set-enabled devel --color=never >>"$log" 2>&1 \
+    || dnf config-manager --enable devel >>"$log" 2>&1 || true
+
   dnf -y makecache --refresh --color=never >>"$log" 2>&1
 
-  step_ok "EPEL + CRB enabled"
+  step_ok "EPEL + CRB + Devel enabled"
   sleep 1
 }
 
