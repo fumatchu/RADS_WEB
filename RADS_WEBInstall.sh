@@ -617,6 +617,43 @@ build_samba_from_srpm() {
 
   step_ok "SRPM found: $(basename "$SRPM_FILE")"
 
+  # ── Rebuild SRPM from spec to get clean BuildRequires ────────────────────
+  # Rocky's pre-built SRPM has samba-dc and samba-common-tools baked into its
+  # binary BUILDREQUIRES metadata — packages only available in Rocky's internal
+  # build system.  The spec file itself does NOT list them as BuildRequires.
+  # Fix: install the SRPM to ~/rpmbuild, rebuild it ourselves with --with dc
+  # so the resulting SRPM only carries the literal spec BuildRequires (which
+  # we can satisfy: python3-setproctitle is in the devel repo).
+  step_info "Rebuilding SRPM from spec to strip Rocky-internal BuildRequires..."
+  local RPMBUILD_ROOT="/root/rpmbuild"
+  mkdir -p "${RPMBUILD_ROOT}"/{SPECS,SOURCES,BUILD,RPMS,SRPMS}
+
+  # Install SRPM into rpmbuild tree (extracts spec + all source tarballs)
+  rpm -ivh "$SRPM_FILE" --define "_topdir ${RPMBUILD_ROOT}" >>"$log" 2>&1
+
+  local SPEC_FILE; SPEC_FILE=$(ls "${RPMBUILD_ROOT}/SPECS/samba*.spec" 2>/dev/null | head -1)
+  if [[ -z "$SPEC_FILE" ]]; then
+    step_info "Could not extract spec — using original Rocky SRPM (build may fail)"
+  else
+    # Rebuild the SRPM with --with dc so the DC BuildRequires are evaluated
+    # and embedded in our SRPM's metadata — but none of the Rocky-internal
+    # bootstrap deps (samba-dc, samba-common-tools) will appear because
+    # the spec doesn't list them as BuildRequires.
+    rpmbuild -bs "$SPEC_FILE" \
+      --define "_topdir ${RPMBUILD_ROOT}" \
+      --define "dist ${SRPM_DIST}" \
+      --with dc \
+      >>"$log" 2>&1
+
+    local CLEAN_SRPM; CLEAN_SRPM=$(ls "${RPMBUILD_ROOT}/SRPMS/samba-*.src.rpm" 2>/dev/null | tail -1)
+    if [[ -n "$CLEAN_SRPM" ]]; then
+      SRPM_FILE="$CLEAN_SRPM"
+      step_ok "Clean SRPM ready: $(basename "$SRPM_FILE")"
+    else
+      step_info "SRPM rebuild failed — using original (build may fail on builddep)"
+    fi
+  fi
+
   # ── Build with mock ───────────────────────────────────────────────────────
   step_info "Building Samba RPMs with mock (this takes 15-30 minutes)..."
   echo ""
