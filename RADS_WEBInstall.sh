@@ -635,16 +635,21 @@ build_samba_from_srpm() {
   local MOCK_DIST="${SRPM_DIST}.dc"
   step_info "Using dist tag: ${MOCK_DIST}"
 
-  # --with dc   → enables the %bcond 'dc' conditional in the Samba spec,
-  #               which compiles in samba-tool domain provision and the full
-  #               AD/DC stack.  Without this flag, provision is absent.
-  # --define    → overrides the RPM dist macro so built NVRs match repo NVRs
+  # --with dc            → enables AD/DC stack in the Samba spec so
+  #                        samba-tool domain provision is built
+  # --define dist        → overrides RPM dist macro to match repo NVRs
+  # --enablerepo=epel    → needed for python3-setproctitle (not in devel/crb)
+  # --rpmbuild-opts --nocheck → skips %check test suite which has a circular
+  #                        BuildRequires on samba-dc/samba-common-tools
+  #                        (those packages don't exist yet — we're building them)
   mock -r "$MOCK_CFG" \
     --enablerepo=crb \
     --enablerepo=devel \
+    --enablerepo=epel \
     --verbose \
     --with dc \
     --define "dist ${MOCK_DIST}" \
+    --rpmbuild-opts "--nocheck" \
     --rebuild "$SRPM_FILE" \
     --resultdir="$MOCK_RESULT" \
     2>&1 \
