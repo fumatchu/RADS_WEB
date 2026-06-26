@@ -619,15 +619,24 @@ build_samba_from_srpm() {
   # $'s/.../\x1b[..m&\x1b[0m/' — bash expands \x1b to literal ESC before sed sees it
   # Detect the dist tag from the SRPM so built RPMs match the repo version
   # e.g. samba-4.23.5-109.el10_2.src.rpm → dist tag is .el10_2
+  # Detect dist tag from SRPM release field (e.g. el10_2) so built RPMs
+  # match the repo version and dnf won't treat them as downgrades
   local SRPM_DIST; SRPM_DIST=$(rpm -qp --qf '%{RELEASE}' "$SRPM_FILE" 2>/dev/null \
     | grep -oP '\.el\d+[^.]*$' || echo ".el10")
-  step_info "Using dist tag: ${SRPM_DIST}"
+  # Append .dc suffix to signal this is the DC-enabled build
+  local MOCK_DIST="${SRPM_DIST}.dc"
+  step_info "Using dist tag: ${MOCK_DIST}"
 
+  # --with dc   → enables the %bcond 'dc' conditional in the Samba spec,
+  #               which compiles in samba-tool domain provision and the full
+  #               AD/DC stack.  Without this flag, provision is absent.
+  # --define    → overrides the RPM dist macro so built NVRs match repo NVRs
   mock -r "$MOCK_CFG" \
     --enablerepo=crb \
     --enablerepo=devel \
     --verbose \
-    --config-opts="dist='${SRPM_DIST}'" \
+    --with dc \
+    --define "dist ${MOCK_DIST}" \
     --rebuild "$SRPM_FILE" \
     --resultdir="$MOCK_RESULT" \
     2>&1 \
@@ -755,8 +764,6 @@ provision_samba_ad() {
     --realm="${AD_REALM}" \
     --domain="${AD_DOMAIN}" \
     --adminpass="${AD_ADMIN_PASS}" \
-    --server-role=dc \
-    --dns-backend=SAMBA_INTERNAL \
     --use-rfc2307 \
     >>"$log" 2>&1
 
