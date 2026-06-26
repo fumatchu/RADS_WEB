@@ -518,6 +518,37 @@ build_samba_from_srpm() {
   section "Building Samba from SRPM (Rocky 10)"
   local log="$LOGDIR/samba-build.log"; : > "$log"
 
+  local MOCK_CFG="rocky-10-x86_64"
+  local MOCK_RESULT="/var/lib/mock/${MOCK_CFG}/result"
+
+  # ── Check for cached RPMs from a prior build ─────────────────────────────
+  local CACHED_RPMS=()
+  for rpm in "${MOCK_RESULT}"/*.rpm; do
+    [[ "$rpm" == *src.rpm ]]    && continue
+    [[ "$rpm" == *debuginfo* ]] && continue
+    [[ "$rpm" == *debugsource* ]] && continue
+    [[ -f "$rpm" ]] && CACHED_RPMS+=("$rpm")
+  done
+
+  if [[ ${#CACHED_RPMS[@]} -gt 0 ]]; then
+    echo ""
+    echo -e "${CYAN}  ┌─────────────────────────────────────────────────────────────┐${TEXTRESET}"
+    echo -e "${CYAN}  │  Found ${#CACHED_RPMS[@]} pre-built RPMs in mock result dir               │${TEXTRESET}"
+    echo -e "${CYAN}  └─────────────────────────────────────────────────────────────┘${TEXTRESET}"
+    step_info "Mock result dir already contains ${#CACHED_RPMS[@]} RPMs — skipping 30-min rebuild"
+    dialog --backtitle "RADS-WEB Installer" --title "Cached Build Found" \
+      --yesno "Pre-built Samba RPMs were found from a prior build:\n  ${MOCK_RESULT}\n  (${#CACHED_RPMS[@]} packages)\n\nSkip the mock rebuild and install these cached RPMs?\n\n  [Yes] Use cached RPMs (fast)\n  [No]  Rebuild from scratch (15-30 min)" \
+      13 70
+    if [[ $? -eq 0 ]]; then
+      step_ok "Using cached RPMs — skipping mock rebuild"
+      # Jump straight to install
+      _install_samba_rpms "${CACHED_RPMS[@]}"
+      return
+    else
+      step_info "Rebuilding from scratch as requested..."
+    fi
+  fi
+
   step_info "This is the RADS approach — building Samba from the Rocky SRPM into RPMs"
   step_info "This ensures a trusted, dnf-managed Samba install with full AD/DC support"
   sleep 2
@@ -544,7 +575,6 @@ build_samba_from_srpm() {
   # ── Configure mock ────────────────────────────────────────────────────────
   step_info "Setting up mock build environment for Rocky 10..."
   usermod -a -G mock root >>"$log" 2>&1 || true
-  local MOCK_CFG="rocky-10-x86_64"
 
   # ── Download Samba SRPM ───────────────────────────────────────────────────
   step_info "Fetching Samba SRPM from Rocky 10 repos..."
@@ -584,8 +614,6 @@ build_samba_from_srpm() {
   echo -e "${CYAN}  │  Full log: ${log}${TEXTRESET}"
   echo -e "${CYAN}  └─────────────────────────────────────────────────────────────┘${TEXTRESET}"
   echo ""
-
-  local MOCK_RESULT="/var/lib/mock/${MOCK_CFG}/result"
 
   # Stream mock output: tee to log (plain), colorize on terminal
   # $'s/.../\x1b[..m&\x1b[0m/' — bash expands \x1b to literal ESC before sed sees it
@@ -629,39 +657,52 @@ build_samba_from_srpm() {
     return
   fi
 
-  # ── Install built RPMs ───────────────────────────────────────────────────
-  # Install ALL non-src RPMs from the result dir — the Samba SRPM produces
-  # samba-*, python3-samba-*, libsmbclient-*, libwbclient-*, etc.
-  step_info "Installing all built RPMs from mock result..."
-  local RPM_COUNT=0
-  local INSTALLED_RPMS=()
-  # Install in one dnf transaction to resolve inter-package deps cleanly
+  # ── Collect and install built RPMs ──────────────────────────────────────
   local ALL_RPMS=()
   for rpm in "${MOCK_RESULT}"/*.rpm; do
-    [[ "$rpm" == *src.rpm ]] && continue
+    [[ "$rpm" == *src.rpm ]]    && continue
     [[ "$rpm" == *debuginfo* ]] && continue
     [[ "$rpm" == *debugsource* ]] && continue
-    ALL_RPMS+=("$rpm")
+    [[ -f "$rpm" ]] && ALL_RPMS+=("$rpm")
   done
 
-  if [[ ${#ALL_RPMS[@]} -gt 0 ]]; then
-    step_info "Installing ${#ALL_RPMS[@]} RPMs in single transaction..."
-    dnf -y install "${ALL_RPMS[@]}" --nogpgcheck --color=never >>"$log" 2>&1
+  _install_samba_rpms "${ALL_RPMS[@]}"
+
+  # Cleanup
+  rm -rf "$SRPM_DIR"
+  step_ok "Build artifacts cleaned up"
+  sleep 1
+}
+
+# ── Shared install/lock/record helper (used by both fresh build and cache path)
+_install_samba_rpms() {
+  local ALL_RPMS=("$@")
+  local log="$LOGDIR/samba-build.log"
+  local RPM_COUNT=0
+  local INSTALLED_RPMS=()
+
+  if [[ ${#ALL_RPMS[@]} -eq 0 ]]; then
+    step_fail "No RPMs passed to install — check mock result dir"
+    return 1
+  fi
+
+  step_info "Installing ${#ALL_RPMS[@]} RPMs in single transaction..."
+  dnf -y install "${ALL_RPMS[@]}" --nogpgcheck --color=never >>"$log" 2>&1
+  if [[ $? -eq 0 ]]; then
+    RPM_COUNT=${#ALL_RPMS[@]}
+    INSTALLED_RPMS=("${ALL_RPMS[@]}")
+  else
+    # dnf may refuse if repo already has a newer dist-tag (e.g. el10_2 vs el10)
+    # Fall back to rpm --force which bypasses version comparison
+    step_info "dnf install failed (possible dist-tag mismatch) — using rpm --force..."
+    rpm -Uvh --force --nodeps "${ALL_RPMS[@]}" >>"$log" 2>&1
     if [[ $? -eq 0 ]]; then
       RPM_COUNT=${#ALL_RPMS[@]}
       INSTALLED_RPMS=("${ALL_RPMS[@]}")
+      step_ok "RPMs installed via rpm --force"
     else
-      # dnf may refuse if repo already has a newer dist-tag (e.g. el10_2 vs el10)
-      # Fall back to rpm --force which bypasses version comparison
-      step_info "dnf install failed (possible dist-tag mismatch) — using rpm --force..."
-      rpm -Uvh --force --nodeps "${ALL_RPMS[@]}" >>"$log" 2>&1
-      if [[ $? -eq 0 ]]; then
-        RPM_COUNT=${#ALL_RPMS[@]}
-        INSTALLED_RPMS=("${ALL_RPMS[@]}")
-        step_ok "RPMs installed via rpm --force"
-      else
-        step_fail "rpm --force also failed — see ${log}"
-      fi
+      step_fail "rpm --force also failed — see ${log}"
+      return 1
     fi
   fi
 
@@ -672,13 +713,11 @@ build_samba_from_srpm() {
   step_info "Locking Samba packages to prevent unintended dnf upgrades..."
   dnf -y install python3-dnf-plugin-versionlock --color=never >>"$log" 2>&1 || true
 
-  # Lock every package name that came out of the build
   for rpm in "${INSTALLED_RPMS[@]}"; do
     local PKG_NAME; PKG_NAME=$(rpm -qp --qf '%{NAME}' "$rpm" 2>/dev/null)
     [[ -n "$PKG_NAME" ]] && dnf versionlock add "$PKG_NAME" >>"$log" 2>&1 || true
   done
 
-  # Also lock the samba-related libs that may have been pulled in as deps
   for lib in libldb libtalloc libtevent libtdb libwbclient; do
     rpm -q "$lib" &>/dev/null && dnf versionlock add "$lib" >>"$log" 2>&1 || true
   done
@@ -693,11 +732,6 @@ build_samba_from_srpm() {
     | grep -E '^(samba|lib(ldb|talloc|tevent|tdb|wbclient))' \
     > /etc/samba-rads/locked-packages || true
   step_ok "Version recorded: ${SAMBA_NVR}"
-
-  # Cleanup
-  rm -rf "$SRPM_DIR"
-  step_ok "Build artifacts cleaned up"
-  sleep 1
 }
 
 # =============================================================
