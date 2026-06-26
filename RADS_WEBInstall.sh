@@ -584,15 +584,10 @@ build_samba_from_srpm() {
   step_info "Setting up mock build environment for Rocky 10..."
   usermod -a -G mock root >>"$log" 2>&1 || true
 
-  # No custom mock config needed — we use the standard rocky-10-x86_64 config
-  # and handle the circular dep problem via --without testsuite (see below)
-
   # ── Download Samba SRPM ───────────────────────────────────────────────────
   step_info "Fetching Samba SRPM from Rocky 10 repos..."
   local SRPM_DIR="/root/samba-srpm"
   mkdir -p "$SRPM_DIR"
-
-  # Enable source repos and download SRPM
   dnf config-manager --set-enabled devel >>"$log" 2>&1 || true
   cd "$SRPM_DIR" || exit 1
   dnf download --source samba >>"$log" 2>&1
@@ -600,59 +595,91 @@ build_samba_from_srpm() {
   SRPM_FILE=$(ls "$SRPM_DIR"/samba-*.src.rpm 2>/dev/null | head -1)
 
   if [[ -z "$SRPM_FILE" ]]; then
-    step_fail "Could not download Samba SRPM — trying direct dnf install method"
-    # Fallback: try dnf install with --enablerepo
-    dnf -y install samba samba-dc samba-client samba-common-tools \
-      samba-winbind samba-winbind-clients --setopt=tsflags=nodocs \
-      --color=never >>"$log" 2>&1
-    if [[ $? -eq 0 ]]; then
-      step_ok "Samba installed via dnf (package build not available)"
-    else
-      step_fail "Samba install failed — see ${log}"
-      dialog --title "Build Failed" --msgbox "Samba build/install failed.\nSee: ${log}\n\nYou may need to manually build the SRPM for Rocky 10." 10 65
-      exit 1
-    fi
-    return
+    step_fail "Could not download Samba SRPM"
+    exit 1
   fi
+  step_ok "SRPM: $(basename "$SRPM_FILE")"
 
-  step_ok "SRPM found: $(basename "$SRPM_FILE")"
+  # ── Detect dist tag ───────────────────────────────────────────────────────
+  local SRPM_DIST; SRPM_DIST=$(rpm -qp --qf '%{RELEASE}' "$SRPM_FILE" 2>/dev/null \
+    | grep -oP '\.el\d+[^.]*$' || echo ".el10")
+  local MOCK_DIST="${SRPM_DIST}.dc"
+  step_info "Using dist tag: ${MOCK_DIST}"
 
-  # ── Rebuild SRPM from spec to get clean BuildRequires ────────────────────
-  # Rocky's pre-built SRPM has samba-dc and samba-common-tools baked into its
-  # binary BUILDREQUIRES metadata — packages only available in Rocky's internal
-  # build system.  The spec file itself does NOT list them as BuildRequires.
-  # Fix: install the SRPM to ~/rpmbuild, rebuild it ourselves with --with dc
-  # so the resulting SRPM only carries the literal spec BuildRequires (which
-  # we can satisfy: python3-setproctitle is in the devel repo).
-  step_info "Rebuilding SRPM from spec to strip Rocky-internal BuildRequires..."
-  local RPMBUILD_ROOT="/root/rpmbuild"
-  mkdir -p "${RPMBUILD_ROOT}"/{SPECS,SOURCES,BUILD,RPMS,SRPMS}
+  # ── Build stub repo for DC bootstrap packages ─────────────────────────────
+  # --with dc adds BuildRequires for three packages not in public Rocky 10 repos:
+  #   python3-setproctitle  → only in EPEL (not configured in mock chroot)
+  #   samba-dc              → obsoleted/merged; doesn't exist as a separate pkg
+  #   samba-common-tools    → excluded by repo exclude filters in the chroot
+  # We create minimal stub RPMs that satisfy the BuildRequires so dnf builddep
+  # succeeds, then mock compiles the real packages from source.
+  step_info "Building DC bootstrap stub packages for mock..."
+  local STUB_DIR="/root/samba-dc-stubs"
+  mkdir -p "$STUB_DIR"
 
-  # Install SRPM into rpmbuild tree (extracts spec + all source tarballs)
-  rpm -ivh "$SRPM_FILE" --define "_topdir ${RPMBUILD_ROOT}" >>"$log" 2>&1
+  for stub_name in python3-setproctitle samba-dc samba-common-tools; do
+    local stub_ver="0.1"
+    [[ "$stub_name" == "samba-dc" || "$stub_name" == "samba-common-tools" ]] && stub_ver="4.23.5"
 
-  local SPEC_FILE; SPEC_FILE=$(ls "${RPMBUILD_ROOT}/SPECS/samba*.spec" 2>/dev/null | head -1)
-  if [[ -z "$SPEC_FILE" ]]; then
-    step_info "Could not extract spec — using original Rocky SRPM (build may fail)"
-  else
-    # Rebuild the SRPM with --with dc so the DC BuildRequires are evaluated
-    # and embedded in our SRPM's metadata — but none of the Rocky-internal
-    # bootstrap deps (samba-dc, samba-common-tools) will appear because
-    # the spec doesn't list them as BuildRequires.
-    rpmbuild -bs "$SPEC_FILE" \
-      --define "_topdir ${RPMBUILD_ROOT}" \
-      --define "dist ${SRPM_DIST}" \
-      --with dc \
-      >>"$log" 2>&1
+    local stub_spec="/tmp/${stub_name}-stub.spec"
+    cat > "$stub_spec" << SPEC
+Name:       ${stub_name}
+Version:    ${stub_ver}
+Release:    0.stub
+Summary:    Bootstrap stub for Samba DC build
+License:    GPL-3.0+
+BuildArch:  noarch
 
-    local CLEAN_SRPM; CLEAN_SRPM=$(ls "${RPMBUILD_ROOT}/SRPMS/samba-*.src.rpm" 2>/dev/null | tail -1)
-    if [[ -n "$CLEAN_SRPM" ]]; then
-      SRPM_FILE="$CLEAN_SRPM"
-      step_ok "Clean SRPM ready: $(basename "$SRPM_FILE")"
-    else
-      step_info "SRPM rebuild failed — using original (build may fail on builddep)"
-    fi
-  fi
+%description
+Minimal stub package to satisfy BuildRequires during Samba DC mock build.
+
+%install
+%if "%{name}" == "python3-setproctitle"
+mkdir -p %{buildroot}%{python3_sitelib}
+printf '# stub\ndef setproctitle(t): pass\ndef getproctitle(): return ""\n' \
+  > %{buildroot}%{python3_sitelib}/setproctitle.py
+%endif
+
+%files
+%if "%{name}" == "python3-setproctitle"
+%{python3_sitelib}/setproctitle.py
+%endif
+SPEC
+
+    rpmbuild -bb "$stub_spec" \
+      --define "_rpmdir ${STUB_DIR}" \
+      --define "_build_name_fmt %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm" \
+      >>"$log" 2>&1 || true
+  done
+
+  # Flatten any arch subdirs
+  find "$STUB_DIR" -name "*.rpm" ! -path "$STUB_DIR/*.rpm" \
+    -exec mv {} "$STUB_DIR/" \; 2>/dev/null || true
+  createrepo_c "$STUB_DIR" >>"$log" 2>&1
+  step_ok "Stub repo ready: $(ls "${STUB_DIR}"/*.rpm 2>/dev/null | wc -l) packages"
+
+  # ── Write mock config with stub repo + cleared devel excludes ────────────
+  local MOCK_CFG_FILE="/etc/mock/rocky-10-x86_64-samba-dc.cfg"
+  cat > "$MOCK_CFG_FILE" << MOCKCFG
+include('/etc/mock/rocky-10-x86_64.cfg')
+
+# Provide bootstrap stubs for packages not in public repos
+# and clear devel repo excludes that block samba-common-tools
+config_opts['dnf.conf'] += """
+[samba-dc-stubs]
+name=Samba DC Bootstrap Stubs
+baseurl=file://${STUB_DIR}
+enabled=1
+gpgcheck=0
+priority=1
+
+[devel]
+exclude=
+"""
+MOCKCFG
+  step_ok "Mock config: ${MOCK_CFG_FILE}"
+  local MOCK_BUILD_CFG="rocky-10-x86_64-samba-dc"
+  MOCK_RESULT="/var/lib/mock/${MOCK_BUILD_CFG}/result"
 
   # ── Build with mock ───────────────────────────────────────────────────────
   step_info "Building Samba RPMs with mock (this takes 15-30 minutes)..."
@@ -663,32 +690,10 @@ build_samba_from_srpm() {
   echo -e "${CYAN}  └─────────────────────────────────────────────────────────────┘${TEXTRESET}"
   echo ""
 
-  # Stream mock output: tee to log (plain), colorize on terminal
-  # $'s/.../\x1b[..m&\x1b[0m/' — bash expands \x1b to literal ESC before sed sees it
-  # Detect the dist tag from the SRPM so built RPMs match the repo version
-  # e.g. samba-4.23.5-109.el10_2.src.rpm → dist tag is .el10_2
-  # Detect dist tag from SRPM release field (e.g. el10_2) so built RPMs
-  # match the repo version and dnf won't treat them as downgrades
-  local SRPM_DIST; SRPM_DIST=$(rpm -qp --qf '%{RELEASE}' "$SRPM_FILE" 2>/dev/null \
-    | grep -oP '\.el\d+[^.]*$' || echo ".el10")
-  # Append .dc suffix to signal this is the DC-enabled build
-  local MOCK_DIST="${SRPM_DIST}.dc"
-  step_info "Using dist tag: ${MOCK_DIST}"
-
-  # --with dc          → enables the AD/DC bcond in the Samba spec so
-  #                      samba-tool domain provision is compiled in
-  # --without testsuite → the Samba spec lists samba-dc + samba-common-tools
-  #                      as BuildRequires only under the testsuite bcond —
-  #                      this is a circular dep (we're building those packages).
-  #                      Disabling testsuite removes those BuildRequires before
-  #                      mock's dnf builddep phase even runs.
-  # --enablerepo=devel  → provides remaining build deps (python3-talloc-devel etc)
-  # --define dist       → matches built RPM NVRs to repo dist tag
-  mock -r "$MOCK_CFG" \
+  mock -r "$MOCK_BUILD_CFG" \
     --enablerepo=devel \
     --verbose \
     --with dc \
-    --without testsuite \
     --define "dist ${MOCK_DIST}" \
     --rebuild "$SRPM_FILE" \
     --resultdir="$MOCK_RESULT" \
