@@ -566,27 +566,36 @@ build_samba_from_srpm() {
 
   # ── Build with mock ───────────────────────────────────────────────────────
   step_info "Building Samba RPMs with mock (this takes 15-30 minutes)..."
-  step_info "Build log: ${log}"
+  echo ""
+  echo -e "${CYAN}  ┌─────────────────────────────────────────────────────────────┐${TEXTRESET}"
+  echo -e "${CYAN}  │  mock build output — streaming live                         │${TEXTRESET}"
+  echo -e "${CYAN}  │  Full log: ${log}${TEXTRESET}"
+  echo -e "${CYAN}  └─────────────────────────────────────────────────────────────┘${TEXTRESET}"
+  echo ""
 
   local MOCK_RESULT="/var/lib/mock/${MOCK_CFG}/result"
 
-  # Show dialog while building
-  (
-    mock -r "$MOCK_CFG" --rebuild "$SRPM_FILE" --resultdir="$MOCK_RESULT" >>"$log" 2>&1
-    echo $? > /tmp/samba_build_status
-  ) &
-  local BUILD_PID=$!
+  # Stream mock output: tee to log (plain), colorize on terminal
+  # $'s/.../\x1b[..m&\x1b[0m/' — bash expands \x1b to literal ESC before sed sees it
+  mock -r "$MOCK_CFG" \
+    --enablerepo=crb \
+    --enablerepo=devel \
+    --verbose \
+    --rebuild "$SRPM_FILE" \
+    --resultdir="$MOCK_RESULT" \
+    2>&1 \
+  | tee -a "$log" \
+  | sed -u \
+      -e $'s/^Start.*/\x1b[36m&\x1b[0m/' \
+      -e $'s/^Finish.*/\x1b[32m&\x1b[0m/' \
+      -e $'s/^INFO:.*/\x1b[34m&\x1b[0m/' \
+      -e $'s/^ERROR:.*/\x1b[31m&\x1b[0m/' \
+      -e $'s/^WARNING:.*/\x1b[33m&\x1b[0m/' \
+      -e $'s/^DEBUG:.*/\x1b[2m&\x1b[0m/'
 
-  local ELAPSED=0
-  while kill -0 $BUILD_PID 2>/dev/null; do
-    dialog --backtitle "RADS-WEB Installer" --title "Building Samba RPMs" \
-      --infobox "Building Samba from SRPM...\nElapsed: ${ELAPSED}s\n\nThis takes 15-30 minutes. Please wait." 8 60
-    sleep 10
-    ((ELAPSED+=10))
-  done
+  local BUILD_EXIT=${PIPESTATUS[0]}
 
-  local BUILD_EXIT; BUILD_EXIT=$(cat /tmp/samba_build_status 2>/dev/null || echo 1)
-  rm -f /tmp/samba_build_status
+  echo ""
 
   if [[ "$BUILD_EXIT" -ne 0 ]]; then
     step_fail "Mock build failed (exit: ${BUILD_EXIT}) — see ${log}"
