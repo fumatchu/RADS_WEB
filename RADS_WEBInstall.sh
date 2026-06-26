@@ -642,17 +642,12 @@ SPEC
   createrepo_c "$STUB_DIR" >>"$log" 2>&1
   step_ok "Stub repo ready: $(ls "${STUB_DIR}"/*.rpm 2>/dev/null | wc -l) stub packages"
 
-  # ── Resolve EPEL baseurl from host (avoids shell vars that break in chroot)
-  local EPEL_URL _os_major
+  # ── Write mock config ─────────────────────────────────────────────────────
+  local _os_major _arch
   _os_major=$(grep -oP '(?<=^VERSION_ID=")[^"]+' /etc/os-release 2>/dev/null | awk -F. '{print $1}')
   [[ -z "$_os_major" ]] && _os_major="10"
-  EPEL_URL=$(dnf repoinfo epel 2>/dev/null | awk '/^Repo-baseurl/{print $NF; exit}')
-  [[ -z "$EPEL_URL" ]] && \
-    EPEL_URL="https://dl.fedoraproject.org/pub/epel/${_os_major}/Everything/$(uname -m)/"
-  step_info "EPEL: ${EPEL_URL}"
+  _arch=$(uname -m)
 
-  # ── Write mock config ─────────────────────────────────────────────────────
-  # Adds: stub repo, EPEL (for python3-setproctitle), cleared devel excludes
   local MOCK_CFG_FILE="/etc/mock/rocky-10-x86_64-samba-dc.cfg"
   cat > "$MOCK_CFG_FILE" << MOCKCFG
 include('/etc/mock/rocky-10-x86_64.cfg')
@@ -667,7 +662,7 @@ priority=1
 
 [epel]
 name=Extra Packages for Enterprise Linux ${_os_major}
-baseurl=${EPEL_URL}
+baseurl=https://dl.fedoraproject.org/pub/epel/${_os_major}/Everything/${_arch}/
 enabled=1
 gpgcheck=0
 """
