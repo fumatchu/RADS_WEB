@@ -296,15 +296,6 @@ gather_domain_config() {
     dialog --msgbox "Password must be at least 8 characters." 6 50
   done
 
-  # DNS forwarder — detect from resolv.conf, default to 8.8.8.8
-  DNS_FORWARDER=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null)
-  [[ -z "$DNS_FORWARDER" || "$DNS_FORWARDER" == "127.0.0.1" || "$DNS_FORWARDER" == "::1" ]] \
-    && DNS_FORWARDER="8.8.8.8"
-  DNS_FORWARDER=$(dialog --backtitle "AD Configuration" --title "DNS Forwarder" \
-    --inputbox "Enter upstream DNS forwarder IP (used by Samba internal DNS):" 8 65 "${DNS_FORWARDER}" \
-    3>&1 1>&2 2>&3) || DNS_FORWARDER="8.8.8.8"
-  [[ -z "$DNS_FORWARDER" ]] && DNS_FORWARDER="8.8.8.8"
-
   while true; do
     NTP_SERVER=$(dialog --backtitle "AD Configuration" --title "NTP Server" \
       --inputbox "Enter an NTP server IP or FQDN (or press Enter for pool.ntp.org):" 8 70 "pool.ntp.org" \
@@ -316,11 +307,11 @@ gather_domain_config() {
 
   # Confirmation
   dialog --backtitle "AD Configuration" --title "Confirm Domain Settings" \
-    --yesno "Provision Active Directory with these settings?\n\nRealm:       ${AD_REALM}\nDomain:      ${AD_DOMAIN}\nDC FQDN:     ${FQDN}\nDNS Forwarder: ${DNS_FORWARDER}\nNTP:         ${NTP_SERVER}" \
-    13 65
+    --yesno "Provision Active Directory with these settings?\n\nRealm:   ${AD_REALM}\nDomain:  ${AD_DOMAIN}\nDC FQDN: ${FQDN}\nNTP:     ${NTP_SERVER}" \
+    12 65
   [[ $? -ne 0 ]] && gather_domain_config
 
-  export AD_REALM AD_DOMAIN AD_ADMIN_PASS DNS_FORWARDER NTP_SERVER
+  export AD_REALM AD_DOMAIN AD_ADMIN_PASS NTP_SERVER
   step_ok "Domain config: ${AD_REALM} (${AD_DOMAIN})"
   sleep 1
 }
@@ -825,7 +816,6 @@ provision_samba_ad() {
     --domain="${AD_DOMAIN}" \
     --server-role=dc \
     --dns-backend=SAMBA_INTERNAL \
-    --dns-forwarder="${DNS_FORWARDER}" \
     --adminpass="${AD_ADMIN_PASS}" \
     --use-rfc2307 \
     >>"$log" 2>&1
