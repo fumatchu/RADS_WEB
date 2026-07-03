@@ -342,9 +342,9 @@ install_base_packages() {
     chrony net-tools dmidecode ipcalc
     ntsysv wget curl rsync
     nano htop iotop iptraf-ng mc
-    fail2ban cockpit cockpit-storaged cockpit-files
+    fail2ban
     httpd mod_ssl mod_proxy_html
-    python3 python3-pip pam-devel python3-devel
+    python3 python3-pip python3-psutil pam-devel python3-devel
     policycoreutils-python-utils
     acl zip util-linux expect sshpass
     dnf-automatic dnf-plugins-core
@@ -425,7 +425,6 @@ configure_firewall() {
   firewall-cmd --permanent --add-service=ntp         >/dev/null 2>&1
   firewall-cmd --permanent --add-service=http        >/dev/null 2>&1
   firewall-cmd --permanent --add-service=https       >/dev/null 2>&1
-  firewall-cmd --permanent --add-service=cockpit     >/dev/null 2>&1
   # LDAP/LDAPS
   firewall-cmd --permanent --add-port=389/tcp        >/dev/null 2>&1
   firewall-cmd --permanent --add-port=389/udp        >/dev/null 2>&1
@@ -437,7 +436,7 @@ configure_firewall() {
   # Port 8000 (uvicorn) is internal-only — not opened externally
   firewall-cmd --reload >/dev/null 2>&1
   systemctl restart firewalld >/dev/null 2>&1
-  step_ok "Firewall rules applied (Samba AD + DNS + Kerberos + HTTP/HTTPS + Cockpit)"
+  step_ok "Firewall rules applied (Samba AD + DNS + Kerberos + HTTP/HTTPS)"
   sleep 1
 }
 # =============================================================
@@ -913,10 +912,10 @@ install_python_packages() {
     "uvicorn[standard]"
     "python-multipart"
     "python-pam"       # PAM auth against Rocky system users
-    "psutil"           # CPU / memory / disk / network monitor
     "aiofiles"
     "python-dotenv"
   )
+  # psutil is managed by dnf (python3-psutil) to avoid RPM/pip conflict
   local all_ok=1
   for pkg in "${PACKAGES[@]}"; do
     python3 -m pip install -U "$pkg" --break-system-packages >>"$log" 2>&1
@@ -1197,18 +1196,6 @@ EOF
   sleep 1
 }
 # =============================================================
-# STEP 26 — COCKPIT
-# =============================================================
-enable_cockpit() {
-  section "Cockpit"
-  local log="$LOGDIR/cockpit.log"; : > "$log"
-  systemctl enable --now cockpit.socket >>"$log" 2>&1
-  systemctl is-active --quiet cockpit.socket \
-    && step_ok "Cockpit active (https://<server-ip>:9090)" \
-    || step_fail "Cockpit failed to start"
-  sleep 1
-}
-# =============================================================
 # STEP 27 — MONITORING SCRIPT
 # =============================================================
 install_samba_monitor() {
@@ -1340,24 +1327,16 @@ final_status_report() {
       || { systemctl is-active --quiet "smb" 2>/dev/null && [[ "$svc" == "samba" ]] \
         && step_ok "smb (samba)" || step_fail "${svc} (not running)"; }
   done
-  local OPT_SERVICES=("cockpit.socket")
-  echo ""; echo -e "  ${CYAN}Optional Services:${TEXTRESET}"
-  for svc in "${OPT_SERVICES[@]}"; do
-    systemctl is-active --quiet "$svc" 2>/dev/null \
-      && step_ok "${svc}" || step_info "${svc} (check manually)"
-  done
   echo ""; echo -e "  ${CYAN}Active Directory:${TEXTRESET}"
   echo -e "  ${YELLOW}→${TEXTRESET}  Realm:     ${AD_REALM}"
   echo -e "  ${YELLOW}→${TEXTRESET}  DC FQDN:   ${FQDN}"
   echo -e "  ${YELLOW}→${TEXTRESET}  Admin:     Administrator@${AD_REALM}"
   echo ""; echo -e "  ${CYAN}Access Points:${TEXTRESET}"
   echo -e "  ${YELLOW}→${TEXTRESET}  RADS-WEB:  https://${MY_IP}/"
-  echo -e "  ${YELLOW}→${TEXTRESET}  Cockpit:   https://${MY_IP}:9090/"
   echo -e "  ${YELLOW}→${TEXTRESET}  API logs:  journalctl -u rads-web -f"
   echo -e "  ${YELLOW}→${TEXTRESET}  Installer: ${LOGDIR}/"
   echo ""; echo -e "  ${CYAN}Next Steps:${TEXTRESET}"
-  echo -e "  ${YELLOW}→${TEXTRESET}  Log in at https://${MY_IP}/ with your PAM credentials"
-  echo -e "  ${YELLOW}→${TEXTRESET}  Browser will warn about self-signed cert — accept the exception"
+  echo -e "  ${YELLOW}→${TEXTRESET}  Log in at https://${MY_IP}/ with your root credentials"
   echo -e "  ${YELLOW}→${TEXTRESET}  Add a reverse DNS zone:"
   local NET_OCTETS; NET_OCTETS=$(echo "$MY_IP" | awk -F. '{print $3"."$2"."$1}')
   echo -e "       samba-tool dns zonecreate ${FQDN} ${NET_OCTETS}.in-addr.arpa -U Administrator"
@@ -1398,7 +1377,6 @@ main() {
   configure_apache
   install_rads_service
   configure_fail2ban
-  enable_cockpit
   install_samba_monitor
   configure_dnf_automatic
   update_issue_file
