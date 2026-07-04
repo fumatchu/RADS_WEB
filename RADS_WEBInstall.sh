@@ -336,15 +336,15 @@ install_base_packages() {
   section "Base Packages"
   local log="$LOGDIR/packages.log"; : > "$log"
   local PKGS=(
-    gcc make tar bzip2-devel openssl-devel libffi-devel zlib-devel
+    gcc make tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
     rpmbuild rpm-build mock createrepo_c
     krb5-workstation openldap-clients bind-utils
     chrony net-tools dmidecode ipcalc
     ntsysv wget curl rsync
     nano htop iotop iptraf-ng mc
-    fail2ban cockpit cockpit-storaged cockpit-files
+    fail2ban
     httpd mod_ssl mod_proxy_html
-    python3 python3-pip pam-devel python3-devel
+    python3 python3-pip python3-psutil pam-devel python3-devel
     policycoreutils-python-utils
     acl zip util-linux expect sshpass
     dnf-automatic dnf-plugins-core
@@ -360,13 +360,16 @@ install_base_packages() {
       ((COUNT++))
       local PCT=$(( COUNT * 100 / TOTAL ))
       echo "$PCT"; echo "XXX"; echo "Installing: $PKG"; echo "XXX"
-      dnf -y -q install --color=never --setopt=tsflags=nodocs "$PKG" >>"$log" 2>&1
+      dnf -y -q install --color=never --setopt=tsflags=nodocs --setopt=install_weak_deps=False "$PKG" >>"$log" 2>&1
     done
     echo "100"; echo "XXX"; echo "Base packages installed."; echo "XXX"
   } > "$PIPE"
   wait; rm -f "$PIPE"
   clear; section "Base Packages"
   step_ok "Base packages installed"
+  # Cockpit is not used — remove it whether installed by the OS or as a weak dep
+  dnf remove -y 'cockpit*' >>"$log" 2>&1 || true
+  step_info "Cockpit removed (not needed)"
   sleep 1
 }
 # =============================================================
@@ -425,7 +428,6 @@ configure_firewall() {
   firewall-cmd --permanent --add-service=ntp         >/dev/null 2>&1
   firewall-cmd --permanent --add-service=http        >/dev/null 2>&1
   firewall-cmd --permanent --add-service=https       >/dev/null 2>&1
-  firewall-cmd --permanent --add-service=cockpit     >/dev/null 2>&1
   # LDAP/LDAPS
   firewall-cmd --permanent --add-port=389/tcp        >/dev/null 2>&1
   firewall-cmd --permanent --add-port=389/udp        >/dev/null 2>&1
@@ -437,7 +439,7 @@ configure_firewall() {
   # Port 8000 (uvicorn) is internal-only — not opened externally
   firewall-cmd --reload >/dev/null 2>&1
   systemctl restart firewalld >/dev/null 2>&1
-  step_ok "Firewall rules applied (Samba AD + DNS + Kerberos + HTTP/HTTPS + Cockpit)"
+  step_ok "Firewall rules applied (Samba AD + DNS + Kerberos + HTTP/HTTPS)"
   sleep 1
 }
 # =============================================================
@@ -461,11 +463,14 @@ build_samba_from_srpm() {
   local MOCK_CFG="rocky-10-x86_64"
   local MOCK_RESULT="/var/lib/mock/${MOCK_CFG}/result"
   # ── Check for cached RPMs from a prior build ─────────────────────────────
+  # (same samba-dc-bind-dlz exclusion as the fresh-build path below — a stale
+  # cache dir from before this exclusion existed would otherwise still ship it)
   local CACHED_RPMS=()
   for rpm in "${MOCK_RESULT}"/*.rpm; do
     [[ "$rpm" == *src.rpm ]]    && continue
     [[ "$rpm" == *debuginfo* ]] && continue
     [[ "$rpm" == *debugsource* ]] && continue
+    [[ "$rpm" == *samba-dc-bind-dlz* ]] && continue
     [[ -f "$rpm" ]] && CACHED_RPMS+=("$rpm")
   done
   if [[ ${#CACHED_RPMS[@]} -gt 0 ]]; then
@@ -615,18 +620,27 @@ MOCKCFG
     dialog --title "Build Failed" \
       --msgbox "Samba SRPM build failed.\nSee: ${log}\n\nCommon issues:\n- Missing build deps\n- Mock configuration\n\nTrying dnf install as fallback..." 12 65
     # Fallback to dnf
-    dnf -y install samba samba-dc samba-client samba-common-tools \
+    # --exclude keeps the BIND9-DLZ subpackage (and the bind/bind-dnssec-utils
+    # it drags in) off the box — we run the hybrid DNS setup (Samba on :53,
+    # BIND forwarder on :5353) instead of the BIND_DLZ backend, so it's dead
+    # weight that only confuses the dashboard's service health checks.
+    dnf -y install --exclude=samba-dc-bind-dlz samba samba-dc samba-client samba-common-tools \
       samba-winbind samba-winbind-clients >>"$log" 2>&1
     [[ $? -eq 0 ]] && step_ok "Samba installed via dnf fallback" \
       || { step_fail "All Samba install methods failed"; exit 1; }
     return
   fi
   # ── Collect and install built RPMs ──────────────────────────────────────
+  # samba-dc-bind-dlz is excluded here too: it's Samba's BIND9-DLZ backend,
+  # an alternative to the internal DNS server we actually use. Installing it
+  # drags in bind + bind-dnssec-utils as unused, never-started dead weight
+  # (see Tranquil IT's hybrid DNS docs — DLZ isn't required for that setup).
   local ALL_RPMS=()
   for rpm in "${MOCK_RESULT}"/*.rpm; do
     [[ "$rpm" == *src.rpm ]]    && continue
     [[ "$rpm" == *debuginfo* ]] && continue
     [[ "$rpm" == *debugsource* ]] && continue
+    [[ "$rpm" == *samba-dc-bind-dlz* ]] && continue
     [[ -f "$rpm" ]] && ALL_RPMS+=("$rpm")
   done
   _install_samba_rpms "${ALL_RPMS[@]}"
@@ -901,10 +915,10 @@ install_python_packages() {
     "uvicorn[standard]"
     "python-multipart"
     "python-pam"       # PAM auth against Rocky system users
-    "psutil"           # CPU / memory / disk / network monitor
     "aiofiles"
     "python-dotenv"
   )
+  # psutil is managed by dnf (python3-psutil) to avoid RPM/pip conflict
   local all_ok=1
   for pkg in "${PACKAGES[@]}"; do
     python3 -m pip install -U "$pkg" --break-system-packages >>"$log" 2>&1
@@ -993,6 +1007,15 @@ generate_ssl_cert() {
     | awk '/src/{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}' \
     || hostname -I | awk '{print $1}')
 
+  # Disable the default mod_ssl VirtualHost FIRST — always, regardless of
+  # cert generation outcome. Our rads-web.conf declares Listen 443 itself,
+  # so ssl.conf being present causes a duplicate-listener error in Apache.
+  local DEFAULT_SSL="/etc/httpd/conf.d/ssl.conf"
+  if [[ -f "$DEFAULT_SSL" ]]; then
+    mv "$DEFAULT_SSL" "${DEFAULT_SSL}.disabled"
+    step_ok "Default ssl.conf disabled (avoids Listen 443 conflict)"
+  fi
+
   if [[ -f "$CERT" && -f "$KEY" ]]; then
     step_ok "Certificate already exists — skipping generation"
   else
@@ -1024,13 +1047,6 @@ generate_ssl_cert() {
     step_ok "SELinux context restored on cert/key"
   fi
 
-  # Disable the default mod_ssl VirtualHost — it conflicts with ours
-  local DEFAULT_SSL="/etc/httpd/conf.d/ssl.conf"
-  if [[ -f "$DEFAULT_SSL" ]]; then
-    mv "$DEFAULT_SSL" "${DEFAULT_SSL}.disabled"
-    step_ok "Default ssl.conf disabled (renamed to ssl.conf.disabled)"
-  fi
-
   sleep 1
 }
 # =============================================================
@@ -1043,7 +1059,10 @@ configure_apache() {
   local CONF="/etc/httpd/conf.d/rads-web.conf"
 
   # ── Proxy modules conf ───────────────────────────────────────
-  cat > /etc/httpd/conf.modules.d/00-proxy.conf <<'EOF'
+  # Only write if mod_proxy_wstunnel isn't already declared — avoids
+  # "module already loaded" warnings from the default httpd module configs.
+  if ! grep -qr "mod_proxy_wstunnel" /etc/httpd/conf.modules.d/ 2>/dev/null; then
+    cat > /etc/httpd/conf.modules.d/00-rads-proxy.conf <<'EOF'
 LoadModule proxy_module           modules/mod_proxy.so
 LoadModule proxy_http_module      modules/mod_proxy_http.so
 LoadModule proxy_html_module      modules/mod_proxy_html.so
@@ -1051,6 +1070,10 @@ LoadModule proxy_wstunnel_module  modules/mod_proxy_wstunnel.so
 LoadModule rewrite_module         modules/mod_rewrite.so
 LoadModule headers_module         modules/mod_headers.so
 EOF
+    step_ok "Proxy module conf written"
+  else
+    step_ok "Proxy modules already loaded — skipping"
+  fi
 
   # ── VirtualHost config ───────────────────────────────────────
   cat > "$CONF" <<'APACHECONF'
@@ -1185,18 +1208,6 @@ EOF
   sleep 1
 }
 # =============================================================
-# STEP 26 — COCKPIT
-# =============================================================
-enable_cockpit() {
-  section "Cockpit"
-  local log="$LOGDIR/cockpit.log"; : > "$log"
-  systemctl enable --now cockpit.socket >>"$log" 2>&1
-  systemctl is-active --quiet cockpit.socket \
-    && step_ok "Cockpit active (https://<server-ip>:9090)" \
-    || step_fail "Cockpit failed to start"
-  sleep 1
-}
-# =============================================================
 # STEP 27 — MONITORING SCRIPT
 # =============================================================
 install_samba_monitor() {
@@ -1253,7 +1264,53 @@ EOF
   sleep 1
 }
 # =============================================================
-# STEP 28 — LOGIN BANNER
+# STEP 28 — DNF AUTOMATIC SECURITY UPDATES
+# =============================================================
+configure_dnf_automatic() {
+  section "DNF Automatic Security Updates"
+  local log="$LOGDIR/dnf-automatic.log"
+  : > "$log"
+
+  # ── Write automatic.conf ──────────────────────────────────────
+  cat > /etc/dnf/automatic.conf <<'EOF'
+[commands]
+# Security updates only — versionlocked packages (Samba) are skipped automatically
+upgrade_type = security
+random_sleep = 0
+download_updates = yes
+apply_updates = yes
+
+[emitters]
+system_name = None
+emit_via = motd, stdio
+
+[email]
+email_from = root@localhost
+email_to = root
+email_host = localhost
+
+[base]
+debuglevel = 1
+EOF
+
+  step_ok "dnf-automatic configured (security updates only, auto-apply)"
+  step_info "Versionlocked Samba packages will be skipped automatically"
+
+  # ── Enable the install timer ──────────────────────────────────
+  # dnf-automatic-install.timer: checks, downloads, and applies updates daily
+  systemctl enable --now dnf-automatic-install.timer >>"$log" 2>&1
+
+  if systemctl is-active --quiet dnf-automatic-install.timer; then
+    step_ok "dnf-automatic-install.timer enabled (runs daily)"
+  else
+    step_fail "dnf-automatic-install.timer failed to start — see ${log}"
+  fi
+
+  sleep 1
+}
+
+# =============================================================
+# STEP 29 — LOGIN BANNER
 # =============================================================
 update_issue_file() {
   section "Login Banner"
@@ -1267,7 +1324,7 @@ EOF
   sleep 1
 }
 # =============================================================
-# STEP 29 — FINAL REPORT
+# STEP 30 — FINAL REPORT
 # =============================================================
 final_status_report() {
   section "Installation Summary"
@@ -1282,29 +1339,16 @@ final_status_report() {
       || { systemctl is-active --quiet "smb" 2>/dev/null && [[ "$svc" == "samba" ]] \
         && step_ok "smb (samba)" || step_fail "${svc} (not running)"; }
   done
-  local OPT_SERVICES=("cockpit.socket")
-  echo ""; echo -e "  ${CYAN}Optional Services:${TEXTRESET}"
-  for svc in "${OPT_SERVICES[@]}"; do
-    systemctl is-active --quiet "$svc" 2>/dev/null \
-      && step_ok "${svc}" || step_info "${svc} (check manually)"
-  done
   echo ""; echo -e "  ${CYAN}Active Directory:${TEXTRESET}"
   echo -e "  ${YELLOW}→${TEXTRESET}  Realm:     ${AD_REALM}"
   echo -e "  ${YELLOW}→${TEXTRESET}  DC FQDN:   ${FQDN}"
   echo -e "  ${YELLOW}→${TEXTRESET}  Admin:     Administrator@${AD_REALM}"
   echo ""; echo -e "  ${CYAN}Access Points:${TEXTRESET}"
   echo -e "  ${YELLOW}→${TEXTRESET}  RADS-WEB:  https://${MY_IP}/"
-  echo -e "  ${YELLOW}→${TEXTRESET}  Cockpit:   https://${MY_IP}:9090/"
   echo -e "  ${YELLOW}→${TEXTRESET}  API logs:  journalctl -u rads-web -f"
   echo -e "  ${YELLOW}→${TEXTRESET}  Installer: ${LOGDIR}/"
   echo ""; echo -e "  ${CYAN}Next Steps:${TEXTRESET}"
-  echo -e "  ${YELLOW}→${TEXTRESET}  Log in at https://${MY_IP}/ with your PAM credentials"
-  echo -e "  ${YELLOW}→${TEXTRESET}  Browser will warn about self-signed cert — accept the exception"
-  echo -e "  ${YELLOW}→${TEXTRESET}  Add a reverse DNS zone:"
-  local NET_OCTETS; NET_OCTETS=$(echo "$MY_IP" | awk -F. '{print $3"."$2"."$1}')
-  echo -e "       samba-tool dns zonecreate ${FQDN} ${NET_OCTETS}.in-addr.arpa -U Administrator"
-  echo -e "  ${YELLOW}→${TEXTRESET}  Create your first AD user:"
-  echo -e "       samba-tool user create <username> --given-name=<firstname> --surname=<lastname>"
+  echo -e "  ${YELLOW}→${TEXTRESET}  Log in at https://${MY_IP}/ with your root credentials"
   echo ""
   echo -e "  ${GREEN}RADS-WEB installation complete.${TEXTRESET}"
   echo ""
@@ -1340,8 +1384,8 @@ main() {
   configure_apache
   install_rads_service
   configure_fail2ban
-  enable_cockpit
   install_samba_monitor
+  configure_dnf_automatic
   update_issue_file
   final_status_report
 }
