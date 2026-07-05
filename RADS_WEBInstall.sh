@@ -428,14 +428,7 @@ configure_firewall() {
   firewall-cmd --permanent --add-service=ntp         >/dev/null 2>&1
   firewall-cmd --permanent --add-service=http        >/dev/null 2>&1
   firewall-cmd --permanent --add-service=https       >/dev/null 2>&1
-  # LDAP/LDAPS
-  firewall-cmd --permanent --add-port=389/tcp        >/dev/null 2>&1
-  firewall-cmd --permanent --add-port=389/udp        >/dev/null 2>&1
-  firewall-cmd --permanent --add-port=636/tcp        >/dev/null 2>&1
-  firewall-cmd --permanent --add-port=3268/tcp       >/dev/null 2>&1
-  firewall-cmd --permanent --add-port=3269/tcp       >/dev/null 2>&1
-  # RPC
-  firewall-cmd --permanent --add-port=49152-65535/tcp >/dev/null 2>&1
+  
   # Port 8000 (uvicorn) is internal-only — not opened externally
   firewall-cmd --reload >/dev/null 2>&1
   systemctl restart firewalld >/dev/null 2>&1
