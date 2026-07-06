@@ -347,8 +347,8 @@ install_base_packages() {
     python3 python3-pip python3-psutil pam-devel python3-devel
     policycoreutils-python-utils
     acl zip util-linux expect sshpass
-    dnf-automatic dnf-plugins-core
-    at bc tuned
+    dnf-automatic dnf-plugins-core dnf-utils
+    at bc tuned 
   )
   local TOTAL=${#PKGS[@]} COUNT=0
   local PIPE; PIPE=$(mktemp -u); mkfifo "$PIPE"
