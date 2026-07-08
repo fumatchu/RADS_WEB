@@ -348,7 +348,7 @@ install_base_packages() {
     policycoreutils-python-utils
     acl zip util-linux expect sshpass
     dnf-automatic dnf-plugins-core dnf-utils
-    at bc tuned 
+    at bc tuned
   )
   local TOTAL=${#PKGS[@]} COUNT=0
   local PIPE; PIPE=$(mktemp -u); mkfifo "$PIPE"
@@ -428,7 +428,7 @@ configure_firewall() {
   firewall-cmd --permanent --add-service=ntp         >/dev/null 2>&1
   firewall-cmd --permanent --add-service=http        >/dev/null 2>&1
   firewall-cmd --permanent --add-service=https       >/dev/null 2>&1
-  
+
   # Port 8000 (uvicorn) is internal-only — not opened externally
   firewall-cmd --reload >/dev/null 2>&1
   systemctl restart firewalld >/dev/null 2>&1
@@ -940,6 +940,7 @@ deploy_rads_web() {
       cp -r "${SRC_BASE}/api"     "$INSTALL_BASE/" >>"$log" 2>&1
       cp -r "${SRC_BASE}/ui"      "$INSTALL_BASE/" >>"$log" 2>&1
       [[ -d "${SRC_BASE}/scripts" ]] && cp -r "${SRC_BASE}/scripts" "$INSTALL_BASE/" >>"$log" 2>&1
+      [[ -d "${SRC_BASE}/upgrade" ]] && cp -r "${SRC_BASE}/upgrade" "$INSTALL_BASE/" >>"$log" 2>&1
       step_ok "Installed from source: ${SRC_BASE}"
     else
       step_fail "No source or release package available"
@@ -955,13 +956,14 @@ deploy_rads_web() {
     rm -f "$TARBALL"
   fi
   # Ensure runtime dirs
-  mkdir -p "${INSTALL_BASE}/data" "${INSTALL_BASE}/logs" "${INSTALL_BASE}/state"
+  mkdir -p "${INSTALL_BASE}/data" "${INSTALL_BASE}/logs" "${INSTALL_BASE}/state" "${INSTALL_BASE}/tools"
   # Permissions
   find "$INSTALL_BASE" -type d -exec chmod 755 {} \;
   find "${INSTALL_BASE}/api" -type f -name "*.py" -exec chmod 644 {} \;
   find "${INSTALL_BASE}/ui"  -type f -exec chmod 644 {} \;
   [[ -d "${INSTALL_BASE}/scripts" ]] && find "${INSTALL_BASE}/scripts" -type f -name "*.sh" -exec chmod 700 {} \;
-  chmod 755 "${INSTALL_BASE}/data" "${INSTALL_BASE}/logs" "${INSTALL_BASE}/state"
+  [[ -d "${INSTALL_BASE}/upgrade" ]] && find "${INSTALL_BASE}/upgrade" -type f -name "*.sh" -exec chmod 700 {} \;
+  chmod 755 "${INSTALL_BASE}/data" "${INSTALL_BASE}/logs" "${INSTALL_BASE}/state" "${INSTALL_BASE}/tools"
   step_ok "Permissions set"
   sleep 1
 }
@@ -1201,6 +1203,59 @@ EOF
   sleep 1
 }
 # =============================================================
+# STEP 26 — RADS-WEB PLATFORM UPDATE CHECK
+# =============================================================
+install_rads_update_check() {
+  section "RADS-WEB Update Check"
+  local log="$LOGDIR/rads-update-check.log"; : > "$log"
+  local CHECK_SCRIPT="${INSTALL_BASE}/upgrade/update_check.sh"
+
+  if [[ ! -x "$CHECK_SCRIPT" ]]; then
+    step_fail "update_check.sh not found at ${CHECK_SCRIPT} — skipping timer setup"
+    step_info "Platform Updates card will still work manually from the UI"
+    return 0
+  fi
+
+  cat > /etc/systemd/system/rads-update-check.service <<EOF
+[Unit]
+Description=RADS-WEB Update Check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=${CHECK_SCRIPT}
+User=root
+StandardOutput=journal
+StandardError=journal
+EOF
+  cat > /etc/systemd/system/rads-update-check.timer <<'EOF'
+[Unit]
+Description=RADS-WEB Daily Update Check
+Requires=rads-update-check.service
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=3600
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+  systemctl daemon-reload >>"$log" 2>&1
+  systemctl enable --now rads-update-check.timer >>"$log" 2>&1
+
+  if systemctl is-active --quiet rads-update-check.timer; then
+    step_ok "rads-update-check.timer enabled (runs daily, checks fumatchu/RADS_WEB)"
+  else
+    step_fail "rads-update-check.timer failed to start — see ${log}"
+  fi
+
+  # Run one check now so the Platform Updates card has fresh state on first login
+  bash "$CHECK_SCRIPT" >>"$log" 2>&1 || true
+  sleep 1
+}
+# =============================================================
 # STEP 27 — MONITORING SCRIPT
 # =============================================================
 install_samba_monitor() {
@@ -1377,6 +1432,7 @@ main() {
   configure_apache
   install_rads_service
   configure_fail2ban
+  install_rads_update_check
   install_samba_monitor
   configure_dnf_automatic
   update_issue_file
