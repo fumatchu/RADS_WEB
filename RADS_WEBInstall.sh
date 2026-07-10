@@ -1005,10 +1005,34 @@ generate_ssl_cert() {
   # Disable the default mod_ssl VirtualHost FIRST — always, regardless of
   # cert generation outcome. Our rads-web.conf declares Listen 443 itself,
   # so ssl.conf being present causes a duplicate-listener error in Apache.
+  #
+  # IMPORTANT: we edit ssl.conf IN PLACE (comment out its Listen line)
+  # instead of renaming it away. /etc/httpd/conf.d/ssl.conf ships from the
+  # mod_ssl RPM as %config(noreplace) — DNF only protects a config file
+  # from being overwritten on update when it still exists at its original
+  # path with modified content. Renaming it to ssl.conf.disabled makes DNF
+  # think the file is simply missing, so the next mod_ssl update reinstalls
+  # a pristine ssl.conf (Listen line and all), silently reintroducing the
+  # duplicate-listener bug. Editing in place keeps DNF's noreplace
+  # protection active — a future update drops ssl.conf.rpmnew alongside
+  # instead of clobbering this fix. Play by DNF's rules, not our own.
   local DEFAULT_SSL="/etc/httpd/conf.d/ssl.conf"
+  local OLD_DISABLED="${DEFAULT_SSL}.disabled"
+
+  # A previous install/version of this script may have renamed it away —
+  # restore it to its real path first so DNF can actually track it.
+  if [[ ! -f "$DEFAULT_SSL" && -f "$OLD_DISABLED" ]]; then
+    mv "$OLD_DISABLED" "$DEFAULT_SSL"
+    step_info "Restored ssl.conf from a previous .disabled rename"
+  fi
+
   if [[ -f "$DEFAULT_SSL" ]]; then
-    mv "$DEFAULT_SSL" "${DEFAULT_SSL}.disabled"
-    step_ok "Default ssl.conf disabled (avoids Listen 443 conflict)"
+    if grep -qE '^[[:space:]]*Listen[[:space:]]+443' "$DEFAULT_SSL"; then
+      sed -i -E 's/^([[:space:]]*)(Listen[[:space:]]+443.*)/\1# \2  # disabled by RADS-WEB installer -- rads-web.conf declares its own Listen 443; kept in place (not renamed) so DNF noreplace protects this edit/' "$DEFAULT_SSL"
+      step_ok "Default ssl.conf Listen 443 commented out in place (DNF-safe)"
+    else
+      step_ok "Default ssl.conf Listen 443 already disabled"
+    fi
   fi
 
   if [[ -f "$CERT" && -f "$KEY" ]]; then
