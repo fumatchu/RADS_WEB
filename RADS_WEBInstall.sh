@@ -1033,6 +1033,26 @@ generate_ssl_cert() {
     else
       step_ok "Default ssl.conf Listen 443 already disabled"
     fi
+
+    # Commenting out Listen 443 above is NOT enough on its own: Apache
+    # matches <VirtualHost _default_:443> against any Listen 443 that
+    # exists anywhere on the server (rads-web.conf declares its own), so
+    # this file's default VirtualHost block is still parsed even with its
+    # local Listen line disabled. That block's SSLCertificateFile points at
+    # /etc/pki/tls/certs/localhost.crt -- a file the mod_ssl RPM references
+    # but never actually creates on RHEL/Rocky 8+ -- which fails apachectl
+    # configtest with AH00526 ("does not exist or is empty") and blocks
+    # httpd from starting. rads-web.conf's own VirtualHost *:443 (using the
+    # real rads-web.crt/key generated above) fully replaces this block, so
+    # comment the whole thing out in place too -- same DNF-safe approach,
+    # not a rename, so mod_ssl updates keep dropping ssl.conf.rpmnew instead
+    # of silently reintroducing this failure.
+    if grep -qE '^[[:space:]]*<VirtualHost[[:space:]]+_default_:443>' "$DEFAULT_SSL"; then
+      sed -i '/^[[:space:]]*<VirtualHost[[:space:]]\+_default_:443>/,/^[[:space:]]*<\/VirtualHost>/ s/^/# /' "$DEFAULT_SSL"
+      step_ok "Default ssl.conf <VirtualHost _default_:443> block commented out in place (DNF-safe)"
+    else
+      step_ok "Default ssl.conf VirtualHost block already disabled"
+    fi
   fi
 
   if [[ -f "$CERT" && -f "$KEY" ]]; then
