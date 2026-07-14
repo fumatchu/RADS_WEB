@@ -519,7 +519,6 @@ build_samba_from_srpm() {
   step_info "This ensures a trusted, dnf-managed Samba install with full AD/DC support"
   sleep 2
   # ── Install build prerequisites ──────────────────────────────────────────
-  step_info "Installing Samba build dependencies..."
   local BUILD_DEPS=(
     "@development-tools"
     python3-devel gnutls-devel libacl-devel openldap-devel
@@ -531,20 +530,36 @@ build_samba_from_srpm() {
     gpgme-devel jansson-devel libnsl2-devel
     python3-dns python3-markdown
   )
+  # One dot per package as it actually finishes installing — real progress
+  # tied to completed work, not just elapsed time, same idea as the repo
+  # metadata refresh ticker above.
+  printf "  ${YELLOW}→${TEXTRESET} Installing Samba build dependencies "
   for dep in "${BUILD_DEPS[@]}"; do
     dnf -y install "$dep" --setopt=tsflags=nodocs --color=never >>"$log" 2>&1 || true
+    printf "."
   done
-  step_ok "Build dependencies installed"
+  echo ""
+  step_ok "Build dependencies installed (${#BUILD_DEPS[@]} packages)"
   # ── Configure mock ────────────────────────────────────────────────────────
   step_info "Setting up mock build environment for Rocky 10..."
   usermod -a -G mock root >>"$log" 2>&1 || true
   # ── Download Samba SRPM ───────────────────────────────────────────────────
-  step_info "Fetching Samba SRPM from Rocky 10 repos..."
+  # A single opaque `dnf download`, same deal as the metadata refresh in
+  # enable_repos() — no discrete sub-steps to hook progress into, so tick a
+  # dot per second in the background while it runs.
   local SRPM_DIR="/root/samba-srpm"
   mkdir -p "$SRPM_DIR"
   dnf config-manager --set-enabled devel >>"$log" 2>&1 || true
   cd "$SRPM_DIR" || exit 1
-  dnf download --source samba >>"$log" 2>&1
+  printf "  ${YELLOW}→${TEXTRESET} Fetching Samba SRPM from Rocky 10 repos "
+  dnf download --source samba >>"$log" 2>&1 &
+  local srpm_dl_pid=$!
+  while kill -0 "$srpm_dl_pid" 2>/dev/null; do
+    printf "."
+    sleep 1
+  done
+  wait "$srpm_dl_pid"
+  echo ""
   local SRPM_FILE
   SRPM_FILE=$(ls "$SRPM_DIR"/samba-*.src.rpm 2>/dev/null | head -1)
   if [[ -z "$SRPM_FILE" ]]; then
@@ -634,6 +649,7 @@ MOCKCFG
   echo -e "${CYAN}  │  Full log: ${log}${TEXTRESET}"
   echo -e "${CYAN}  └─────────────────────────────────────────────────────────────┘${TEXTRESET}"
   echo ""
+  sleep 2
   mock -r "$MOCK_BUILD_CFG" \
     --enablerepo=devel \
     --verbose \
@@ -643,13 +659,40 @@ MOCKCFG
     --resultdir="$MOCK_RESULT" \
     2>&1 \
   | tee -a "$log" \
-  | sed -u \
-      -e $'s/^Start.*/\x1b[36m&\x1b[0m/' \
-      -e $'s/^Finish.*/\x1b[32m&\x1b[0m/' \
-      -e $'s/^INFO:.*/\x1b[34m&\x1b[0m/' \
-      -e $'s/^ERROR:.*/\x1b[31m&\x1b[0m/' \
-      -e $'s/^WARNING:.*/\x1b[33m&\x1b[0m/' \
-      -e $'s/^DEBUG:.*/\x1b[2m&\x1b[0m/'
+  | while IFS= read -r _mock_line; do
+      # DEBUG is the vast majority of mock --verbose output and flies by
+      # unthrottled; the handful of Start/Finish/INFO/WARNING/ERROR lines
+      # actually mark a stage boundary, so those get a beat of pause after
+      # printing so a human can actually register them going by.
+      case "$_mock_line" in
+        Start*)
+          printf '\x1b[36m%s\x1b[0m\n' "$_mock_line"
+          sleep 1
+          ;;
+        Finish*)
+          printf '\x1b[32m%s\x1b[0m\n' "$_mock_line"
+          sleep 1
+          ;;
+        INFO:*)
+          printf '\x1b[34m%s\x1b[0m\n' "$_mock_line"
+          sleep 1
+          ;;
+        ERROR:*)
+          printf '\x1b[31m%s\x1b[0m\n' "$_mock_line"
+          sleep 1
+          ;;
+        WARNING:*)
+          printf '\x1b[33m%s\x1b[0m\n' "$_mock_line"
+          sleep 1
+          ;;
+        DEBUG:*)
+          printf '\x1b[2m%s\x1b[0m\n' "$_mock_line"
+          ;;
+        *)
+          printf '%s\n' "$_mock_line"
+          ;;
+      esac
+    done
   local BUILD_EXIT=${PIPESTATUS[0]}
   echo ""
   if [[ "$BUILD_EXIT" -ne 0 ]]; then
