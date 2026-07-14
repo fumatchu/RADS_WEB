@@ -515,9 +515,6 @@ build_samba_from_srpm() {
       step_info "Rebuilding from scratch as requested..."
     fi
   fi
-  step_info "This is the RADS approach — building Samba from the Rocky SRPM into RPMs"
-  step_info "This ensures a trusted, dnf-managed Samba install with full AD/DC support"
-  sleep 2
   # ── Install build prerequisites ──────────────────────────────────────────
   local BUILD_DEPS=(
     "@development-tools"
@@ -650,7 +647,14 @@ MOCKCFG
   echo -e "${CYAN}  └─────────────────────────────────────────────────────────────┘${TEXTRESET}"
   echo ""
   sleep 2
+  # --isolation=simple: mock's systemd-nspawn default needs nested
+  # mount-namespace support that many hypervisors don't fully pass through to
+  # the guest, failing with "Failed to mount /proc/sys ... Child died too
+  # early." Plain chroot isolation doesn't need that, so it works in VMs
+  # where nspawn doesn't. Same fix applied in api/samba_update.py's rebuild
+  # pipeline, which runs the same mock command.
   mock -r "$MOCK_BUILD_CFG" \
+    --isolation=simple \
     --enablerepo=devel \
     --verbose \
     --with dc \
