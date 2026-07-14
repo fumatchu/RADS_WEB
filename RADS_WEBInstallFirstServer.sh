@@ -546,6 +546,12 @@ build_samba_from_srpm() {
   # dot per second in the background while it runs.
   local SRPM_DIR="/root/samba-srpm"
   mkdir -p "$SRPM_DIR"
+  # Clear out any SRPM left from a prior run before downloading a fresh one.
+  # Without this, a stale SRPM from an older Rocky point release can sit
+  # alongside the new one, and the `ls | head -1` below picks alphabetically
+  # — not newest — so an old cached 4.23.x could silently outrank a real
+  # 4.24.x. Same cleanup api/samba_update.py's rebuild pipeline already does.
+  rm -f "$SRPM_DIR"/samba-*.src.rpm
   dnf config-manager --set-enabled devel >>"$log" 2>&1 || true
   cd "$SRPM_DIR" || exit 1
   printf "  ${YELLOW}→${TEXTRESET} Fetching Samba SRPM from Rocky 10 repos "
@@ -1539,6 +1545,34 @@ final_status_report() {
   sed -i '/## RADS-WEB Installer — auto-resume after reboot ##/,/^fi$/d' /root/.bash_profile 2>/dev/null || true
 }
 # =============================================================
+# STEP 31 — CLEANUP
+# =============================================================
+cleanup_install_artifacts() {
+  section "Cleanup"
+  # Everything removed here is scratch space from building Samba or running
+  # this installer — none of it is needed once samba/samba-dc are actually
+  # built and installed. Only reached after every prior step in main()
+  # succeeded (anything earlier that fails calls exit 1 directly), so this
+  # never runs on a failed/partial install where these dirs are exactly what
+  # you'd want left behind to debug.
+  #
+  # Deliberately NOT touched:
+  #   /var/lib/mock/*        — mock's own cache. build_samba_from_srpm()'s
+  #                            cached-RPM check and the Samba Updates
+  #                            rebuild/rollback pipeline in the web UI both
+  #                            read from here; wiping it would force a full
+  #                            15-30 min rebuild next time for no reason.
+  #   /var/log/rads-installer — this run's logs; kept for post-install review.
+  #   /root/anaconda-ks.cfg   — pre-existing OS install file, not ours.
+  cd /root 2>/dev/null || cd / 2>/dev/null || true
+  rm -rf /root/RADS_WEBInstaller
+  rm -rf /root/rpmbuild
+  rm -rf /root/samba-dc-stubs
+  rm -rf /root/samba-srpm
+  step_ok "Removed installer clone and Samba build scratch directories"
+  sleep 1
+}
+# =============================================================
 # MAIN
 # =============================================================
 main() {
@@ -1572,5 +1606,6 @@ main() {
   configure_dnf_automatic
   update_issue_file
   final_status_report
+  cleanup_install_artifacts
 }
 main
