@@ -272,7 +272,13 @@ gather_domain_config() {
   dialog --backtitle "AD Configuration" --title "Confirm Domain Settings" \
     --yesno "Provision Active Directory with these settings?\n\nRealm:   ${AD_REALM}\nDomain:  ${AD_DOMAIN}\nDC FQDN: ${FQDN}\nNTP:     ${NTP_SERVER}" \
     12 65
-  [[ $? -ne 0 ]] && gather_domain_config
+  if [[ $? -ne 0 ]]; then
+    gather_domain_config
+    return
+  fi
+  # Wipe the dialog box off the screen so "Domain config: ..." starts a
+  # clean page instead of overlapping whatever dialog left drawn behind it.
+  clear
   export AD_REALM AD_DOMAIN AD_ADMIN_PASS NTP_SERVER
   step_ok "Domain config: ${AD_REALM} (${AD_DOMAIN})"
   sleep 1
@@ -283,18 +289,43 @@ gather_domain_config() {
 enable_repos() {
   section "Repository Setup"
   local log="$LOGDIR/repo-setup.log"; : > "$log"
-  step_info "Enabling EPEL, CRB, and Devel repositories..."
+
+  step_info "Installing EPEL repository..."
   dnf -y install epel-release --setopt=install_weak_deps=False --color=never >>"$log" 2>&1
+  step_ok "EPEL repository installed"
+
+  step_info "Installing dnf-plugins-core..."
   dnf -y install dnf-plugins-core --setopt=install_weak_deps=False --color=never >>"$log" 2>&1 || true
+  step_ok "dnf-plugins-core installed"
+
   # CRB — needed for many build deps
+  step_info "Enabling CRB repository..."
   dnf config-manager --set-enabled crb --color=never >>"$log" 2>&1 \
     || dnf config-manager --enable crb >>"$log" 2>&1 || true
+  step_ok "CRB repository enabled"
+
   # Devel — required for python3-setproctitle, samba-dc, samba-common-tools
   # and python3-talloc-devel (Samba build deps not in CRB or base)
+  step_info "Enabling Devel repository..."
   dnf config-manager --set-enabled devel --color=never >>"$log" 2>&1 \
     || dnf config-manager --enable devel >>"$log" 2>&1 || true
-  dnf -y makecache --refresh --color=never >>"$log" 2>&1
-  step_ok "EPEL + CRB + Devel enabled"
+  step_ok "Devel repository enabled"
+
+  # Metadata refresh across the 3 newly-enabled repos is the genuinely slow,
+  # silent part of this step — everything above it usually finishes in a
+  # couple seconds each. Run it in the background and tick a dot on the same
+  # line every second so it's obvious the installer is still working rather
+  # than hung, instead of one long unexplained pause.
+  printf "  ${YELLOW}→${TEXTRESET} Refreshing package metadata "
+  dnf -y makecache --refresh --color=never >>"$log" 2>&1 &
+  local mc_pid=$!
+  while kill -0 "$mc_pid" 2>/dev/null; do
+    printf "."
+    sleep 1
+  done
+  wait "$mc_pid"
+  echo ""
+  step_ok "Package metadata refreshed"
   sleep 1
 }
 # =============================================================
@@ -526,6 +557,17 @@ build_samba_from_srpm() {
     | grep -oP '\.el\d+[^.]*$' || echo ".el10")
   local MOCK_DIST="${SRPM_DIST}.dc"
   step_info "Using dist tag: ${MOCK_DIST}"
+  # ── Detect Samba version ──────────────────────────────────────────────────
+  # Pulled straight off the SRPM we just downloaded rather than hardcoded —
+  # Rocky bumps this on point releases (10.2 today, 10.4/10.5/etc. later),
+  # and the stub packages below must claim the SAME version the real SRPM's
+  # spec expects, or a future bump silently breaks BuildRequires resolution.
+  local SRPM_VERSION; SRPM_VERSION=$(rpm -qp --qf '%{VERSION}' "$SRPM_FILE" 2>/dev/null)
+  if [[ -z "$SRPM_VERSION" ]]; then
+    step_fail "Could not determine Samba version from SRPM — aborting rather than guess"
+    exit 1
+  fi
+  step_info "Detected Samba version: ${SRPM_VERSION}"
   # ── Build stub repo for circular bootstrap packages ──────────────────────
   # --with dc adds BuildRequires baked into the Rocky SRPM's binary metadata
   # for packages that are circular or excluded in the mock chroot:
@@ -533,13 +575,15 @@ build_samba_from_srpm() {
   #   samba-common-tools → excluded by repo exclude filters in the chroot
   # python3-setproctitle comes from EPEL (configured in mock config below).
   # Stubs just satisfy dnf builddep — the real packages are compiled from source.
+  # Version is pinned to SRPM_VERSION (detected above), not a literal, so
+  # this keeps working after Rocky ships a newer Samba.
   step_info "Building DC bootstrap stub packages for mock..."
   local STUB_DIR="/root/samba-dc-stubs"
   mkdir -p "$STUB_DIR"
   for stub_name in samba-dc samba-common-tools; do
     cat > "/tmp/${stub_name}-stub.spec" << SPEC
 Name:       ${stub_name}
-Version:    4.23.5
+Version:    ${SRPM_VERSION}
 Release:    0.stub
 Summary:    Bootstrap stub for Samba DC mock build
 License:    GPL-3.0+
