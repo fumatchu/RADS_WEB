@@ -123,4 +123,29 @@ echo -e "        ${GREEN}Rocky Linux${RESET} ${CYAN}RADS-WEB${RESET} ${YELLOW}Ac
 echo ""
 sleep 2
 
-bash "${INSTALL_DIR}/RADS_WEBInstall.sh"
+# =============================================================
+# INSTALL TYPE SELECTION
+# =============================================================
+INSTALL_CHOICE=$(dialog --backtitle "RADS-WEB Installer" \
+  --title "Select Installation Type" \
+  --menu "Choose what to install on this server:" 13 72 4 \
+  1 "Install First Domain Controller (new AD forest)" \
+  3>&1 1>&2 2>&3)
+DIALOG_RC=$?
+clear
+
+if [[ $DIALOG_RC -ne 0 || -z "$INSTALL_CHOICE" ]]; then
+  echo -e "  [${YELLOW}→${TEXTRESET}] Installation cancelled."
+  exit 1
+fi
+
+case "$INSTALL_CHOICE" in
+  1)
+    bash "${INSTALL_DIR}/RADS_WEBInstallFirstServer.sh"
+    ;;
+  *)
+    echo -e "  [${YELLOW}→${TEXTRESET}] Installation cancelled."
+    exit 1
+    ;;
+esac
+
