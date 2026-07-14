@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RADS-WEB Main Installer
+# RADS-WEB Installer — First Domain Controller (new AD forest)
 # Rocky Active Directory Server — Web Edition
 # Requires: Rocky Linux 10.0+, run as root
 GREEN="\033[0;32m"
@@ -172,7 +172,7 @@ prompt_static_ip_if_dhcp() {
           cat >> "$PROFILE" << 'BASHEOF'
 ## RADS-WEB Installer — auto-resume after reboot ##
 if [[ $- == *i* ]]; then
-  /root/RADS_WEBInstaller/RADS_WEBInstall.sh
+  /root/RADS_WEBInstaller/RADS_WEBInstallFirstServer.sh
 fi
 BASHEOF
         fi
