@@ -1099,31 +1099,58 @@ generate_ssl_cert() {
     | awk '/src/{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}' \
     || hostname -I | awk '{print $1}')
 
-  # Intentionally NOT touching /etc/httpd/conf.d/ssl.conf here — that file
-  # is owned by the mod_ssl RPM. This function used to sed-comment its
-  # Listen/VirtualHost lines in place, betting on RPM's %config(noreplace)
-  # checksum handling to protect the edit across future `dnf upgrade`s of
-  # httpd/mod_ssl. That bet didn't hold in practice: a real dnf httpd
-  # upgrade on a live box silently reset ssl.conf back to its shipped
-  # defaults, re-enabling its Listen 443 line and breaking httpd on
-  # restart. The Listen-line detection pattern was also stale — it only
-  # matched a bare "Listen 443 ..." and missed Rocky 10's actual dual-stack
-  # format ("Listen 0.0.0.0:443 https" / "Listen [::]:443 https"), so the
-  # edit could silently no-op even on a fresh install.
+  # Disable the default mod_ssl VirtualHost FIRST — always, regardless of
+  # cert generation outcome. Our rads-web.conf declares Listen 443 itself,
+  # so ssl.conf being present causes a duplicate-listener error in Apache.
   #
-  # Apache only errors when the SAME "Listen ip:port" is declared twice —
-  # it's entirely normal for multiple <VirtualHost ...:443> blocks (ours
-  # and ssl.conf's stock one) to share a single Listen. So instead of
-  # fighting a package-owned file, rads-web.conf below simply doesn't
-  # declare its own "Listen 443" at all — ssl.conf's Listen (whatever form
-  # DNF ships it in, today or after any future upgrade) is the only one
-  # that exists, and there's nothing left for an upgrade to break. conf.d
-  # files load alphabetically ("rads-web.conf" before "ssl.conf"), so ours
-  # is still the first VirtualHost defined for :443 and wins as the
-  # default vhost; ssl.conf's own _default_:443 block is simply never
-  # reached for SNI-capable clients, and is otherwise harmless — except
-  # that its SSLCertificateFile still has to exist for Apache to even
-  # parse it, which is handled below.
+  # IMPORTANT: we edit ssl.conf IN PLACE (comment out its Listen line)
+  # instead of renaming it away. /etc/httpd/conf.d/ssl.conf ships from the
+  # mod_ssl RPM as %config(noreplace) — DNF only protects a config file
+  # from being overwritten on update when it still exists at its original
+  # path with modified content. Renaming it to ssl.conf.disabled makes DNF
+  # think the file is simply missing, so the next mod_ssl update reinstalls
+  # a pristine ssl.conf (Listen line and all), silently reintroducing the
+  # duplicate-listener bug. Editing in place keeps DNF's noreplace
+  # protection active — a future update drops ssl.conf.rpmnew alongside
+  # instead of clobbering this fix. Play by DNF's rules, not our own.
+  local DEFAULT_SSL="/etc/httpd/conf.d/ssl.conf"
+  local OLD_DISABLED="${DEFAULT_SSL}.disabled"
+
+  # A previous install/version of this script may have renamed it away —
+  # restore it to its real path first so DNF can actually track it.
+  if [[ ! -f "$DEFAULT_SSL" && -f "$OLD_DISABLED" ]]; then
+    mv "$OLD_DISABLED" "$DEFAULT_SSL"
+    step_info "Restored ssl.conf from a previous .disabled rename"
+  fi
+
+  if [[ -f "$DEFAULT_SSL" ]]; then
+    if grep -qE '^[[:space:]]*Listen[[:space:]]+443' "$DEFAULT_SSL"; then
+      sed -i -E 's/^([[:space:]]*)(Listen[[:space:]]+443.*)/\1# \2  # disabled by RADS-WEB installer -- rads-web.conf declares its own Listen 443; kept in place (not renamed) so DNF noreplace protects this edit/' "$DEFAULT_SSL"
+      step_ok "Default ssl.conf Listen 443 commented out in place (DNF-safe)"
+    else
+      step_ok "Default ssl.conf Listen 443 already disabled"
+    fi
+
+    # Commenting out Listen 443 above is NOT enough on its own: Apache
+    # matches <VirtualHost _default_:443> against any Listen 443 that
+    # exists anywhere on the server (rads-web.conf declares its own), so
+    # this file's default VirtualHost block is still parsed even with its
+    # local Listen line disabled. That block's SSLCertificateFile points at
+    # /etc/pki/tls/certs/localhost.crt -- a file the mod_ssl RPM references
+    # but never actually creates on RHEL/Rocky 8+ -- which fails apachectl
+    # configtest with AH00526 ("does not exist or is empty") and blocks
+    # httpd from starting. rads-web.conf's own VirtualHost *:443 (using the
+    # real rads-web.crt/key generated above) fully replaces this block, so
+    # comment the whole thing out in place too -- same DNF-safe approach,
+    # not a rename, so mod_ssl updates keep dropping ssl.conf.rpmnew instead
+    # of silently reintroducing this failure.
+    if grep -qE '^[[:space:]]*<VirtualHost[[:space:]]+_default_:443>' "$DEFAULT_SSL"; then
+      sed -i '/^[[:space:]]*<VirtualHost[[:space:]]\+_default_:443>/,/^[[:space:]]*<\/VirtualHost>/ s/^/# /' "$DEFAULT_SSL"
+      step_ok "Default ssl.conf <VirtualHost _default_:443> block commented out in place (DNF-safe)"
+    else
+      step_ok "Default ssl.conf VirtualHost block already disabled"
+    fi
+  fi
 
   if [[ -f "$CERT" && -f "$KEY" ]]; then
     step_ok "Certificate already exists — skipping generation"
@@ -1150,39 +1177,9 @@ generate_ssl_cert() {
     fi
   fi
 
-  # ssl.conf's stock <VirtualHost _default_:443> (never actually reached —
-  # rads-web.conf wins as the default vhost, see the note above) still
-  # references /etc/pki/tls/certs/localhost.crt and
-  # /etc/pki/tls/private/localhost.key. Older EL mod_ssl packages
-  # auto-generated a throwaway pair for these via a %post "dummy cert"
-  # trigger; Rocky 10's doesn't, so on a fresh install these files simply
-  # don't exist. Apache validates every configured vhost's cert files at
-  # parse time regardless of which vhost actually gets traffic, so a
-  # missing file here fails the whole configtest even though nothing ever
-  # uses this cert. Creating it ourselves — rather than editing ssl.conf
-  # to remove the reference — keeps us off package-owned files entirely;
-  # its contents don't matter since the vhost referencing it is dead code.
-  local DUMMY_CERT="/etc/pki/tls/certs/localhost.crt"
-  local DUMMY_KEY="/etc/pki/tls/private/localhost.key"
-  if [[ ! -s "$DUMMY_CERT" || ! -s "$DUMMY_KEY" ]]; then
-    step_info "ssl.conf's stock default vhost expects ${DUMMY_CERT} — generating a placeholder..."
-    mkdir -p "$(dirname "$DUMMY_CERT")" "$(dirname "$DUMMY_KEY")"
-    openssl req -x509 -newkey rsa:2048 -keyout "$DUMMY_KEY" -out "$DUMMY_CERT" \
-      -days 3650 -nodes -subj "/CN=localhost" >>"$log" 2>&1
-    if [[ $? -eq 0 ]]; then
-      chmod 600 "$DUMMY_KEY"
-      chmod 644 "$DUMMY_CERT"
-      step_ok "Placeholder cert created at ${DUMMY_CERT}"
-    else
-      step_fail "Could not create placeholder cert — Apache config test may still fail"
-    fi
-  else
-    step_ok "ssl.conf's expected default cert already present"
-  fi
-
   # SELinux context on cert files
   if command -v restorecon >/dev/null 2>&1; then
-    restorecon -v "$CERT" "$KEY" "$DUMMY_CERT" "$DUMMY_KEY" >>"$log" 2>&1 || true
+    restorecon -v "$CERT" "$KEY" >>"$log" 2>&1 || true
     step_ok "SELinux context restored on cert/key"
   fi
 
@@ -1217,12 +1214,9 @@ EOF
   # ── VirtualHost config ───────────────────────────────────────
   cat > "$CONF" <<'APACHECONF'
 # ── RADS-WEB Apache VirtualHost ─────────────────────────────────
-# Deliberately no "Listen 443" here — mod_ssl's own ssl.conf already
-# declares it (we no longer touch that file, see generate_ssl_cert() for
-# why). Apache only errors on a duplicate Listen for the same ip:port, not
-# on multiple VirtualHost blocks sharing one — and conf.d loads
-# alphabetically, so this file's VirtualHost still wins as the default for
-# :443 over ssl.conf's stock one.
+# Listen 443 normally comes from ssl.conf — declare it here since
+# we disable that file to avoid VirtualHost conflicts.
+Listen 443 https
 
 # HTTP → HTTPS redirect (port 80)
 <VirtualHost *:80>
@@ -1509,11 +1503,21 @@ EOF
 # =============================================================
 update_issue_file() {
   section "Login Banner"
-  cat > /etc/issue <<'EOF'
+  local ISSUE_FQDN; ISSUE_FQDN=$(hostname -f 2>/dev/null || hostname)
+  local ESC=$'\033'
+  local C_LABEL="${ESC}[1;34m"
+  local C_ROLE="${ESC}[1;36m"
+  local C_RESET="${ESC}[0m"
+  cat > /etc/issue <<EOF
 \S
-Kernel \r on an \m
-Hostname: \n
-IP Address: \4
+${C_LABEL}Kernel${C_RESET} \r on an \m
+${C_LABEL}Hostname:${C_RESET} \n
+${C_LABEL}IP Address:${C_RESET} \4
+
+${C_LABEL}Please use the Web GUI for Administration${C_RESET}
+${C_LABEL}https://${ISSUE_FQDN}${C_RESET}
+
+${C_ROLE}ROLE: Domain Controller${C_RESET}
 EOF
   step_ok "/etc/issue updated"
   sleep 1
