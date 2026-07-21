@@ -128,8 +128,9 @@ sleep 2
 # =============================================================
 INSTALL_CHOICE=$(dialog --backtitle "RADS-WEB Installer" \
   --title "Select Installation Type" \
-  --menu "Choose what to install on this server:" 13 72 4 \
+  --menu "Choose what to install on this server:" 14 76 4 \
   1 "Install First Domain Controller (new AD forest)" \
+  2 "Join Existing AD Forest (additional Domain Controller)" \
   3>&1 1>&2 2>&3)
 DIALOG_RC=$?
 clear
@@ -142,6 +143,9 @@ fi
 case "$INSTALL_CHOICE" in
   1)
     bash "${INSTALL_DIR}/RADS_WEBInstallFirstServer.sh"
+    ;;
+  2)
+    bash "${INSTALL_DIR}/RADS_WEBInstallSecondaryServer.sh"
     ;;
   *)
     echo -e "  [${YELLOW}→${TEXTRESET}] Installation cancelled."
