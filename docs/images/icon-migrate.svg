@@ -1,0 +1,104 @@
+<svg viewBox="-1 0 27 24" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- =========================================
+       GRADIENT
+  ========================================== -->
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="migrationGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- =========================================
+       SWITCH + CLOUD OUTLINE
+  ========================================== -->
+  <path
+    d="
+      M4 9
+      L9.5 5.5
+      L14 8.3
+
+      C14.7 6.9 16 6.1 17.5 6.1
+      C19.7 6.1 21.4 7.7 21.8 9.8
+      C23 10.1 24 11.2 24 12.6
+      C24 14.6 22.4 16.2 20.4 16.2
+
+      H14
+
+      L9.5 19
+      L4 15.7
+      Z
+    "
+    fill="none"
+    stroke="url(#migrationGrad)"
+    stroke-width="1.5"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+
+  <!-- =========================================
+       SWITCH TOP LINE
+  ========================================== -->
+  <path
+    d="
+      M4 9
+      L9.5 12.2
+      L14 9.4
+    "
+    fill="none"
+    stroke="url(#migrationGrad)"
+    stroke-width="1.1"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+
+  <!-- =========================================
+       SWITCH CENTER EDGE
+  ========================================== -->
+  <path
+    d="
+      M9.5 12.2
+      V19
+    "
+    fill="none"
+    stroke="url(#migrationGrad)"
+    stroke-width="1.1"
+    stroke-linecap="round"
+  />
+
+  <!-- =========================================
+       EXTRA LARGE MIGRATION ARROW
+       MOVED UP + RIGHT
+  ========================================== -->
+
+  <!-- Arrow shaft -->
+  <line
+    x1="10.5"
+    y1="11.2"
+    x2="18.3"
+    y2="11.2"
+    stroke="url(#migrationGrad)"
+    stroke-width="1.8"
+    stroke-linecap="round"
+  />
+
+  <!-- Arrow head -->
+  <path
+    d="
+      M16.3 8.7
+      L19.7 11.2
+      L16.3 13.7
+    "
+    fill="none"
+    stroke="url(#migrationGrad)"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+</svg>

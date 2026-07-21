@@ -1,0 +1,115 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="-2 -2 68 68"
+  fill="none"
+  class="docs-icon"
+  aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+
+    <linearGradient id="docsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+
+  </defs>
+
+  <!-- BOOK OUTER -->
+
+  <path
+    d="
+      M12 10
+
+      C8 10 6 12 6 16
+      V48
+
+      C6 54 10 58 16 58
+      H26
+
+      C30 58 32 56 32 54
+
+      C32 56 34 58 38 58
+      H48
+
+      C54 58 58 54 58 48
+      V16
+
+      C58 12 56 10 52 10
+      H40
+
+      C36 10 34 12 32 16
+
+      C30 12 28 10 24 10
+      Z
+    "
+
+    stroke="url(#docsGradient)"
+    stroke-width="4"
+    stroke-linejoin="round"
+    stroke-linecap="round"/>
+
+  <!-- CENTER SPINE -->
+
+  <path
+    d="
+      M32 16
+      V54
+    "
+
+    stroke="url(#docsGradient)"
+    stroke-width="4"
+    stroke-linecap="round"/>
+
+  <!-- LEFT PAGE BOX -->
+
+  <rect
+    x="14"
+    y="18"
+    width="12"
+    height="12"
+    rx="2.5"
+
+    stroke="url(#docsGradient)"
+    stroke-width="4"/>
+
+  <!-- LEFT PAGE LINES -->
+
+  <path
+    d="
+      M14 38
+      H24
+
+      M14 46
+      H24
+    "
+
+    stroke="url(#docsGradient)"
+    stroke-width="4"
+    stroke-linecap="round"/>
+
+  <!-- RIGHT PAGE LINES -->
+
+  <path
+    d="
+      M40 20
+      H52
+
+      M40 28
+      H52
+
+      M40 36
+      H52
+
+      M40 44
+      H48
+    "
+
+    stroke="url(#docsGradient)"
+    stroke-width="4"
+    stroke-linecap="round"/>
+
+</svg>

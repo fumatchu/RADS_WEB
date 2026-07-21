@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 256 256"
+     fill="none">
+  <defs>
+    <linearGradient
+      id="scheduleGradient"
+      x1="32"
+      y1="32"
+      x2="224"
+      y2="224"
+      gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <!-- TOP BUTTON -->
+  <path d="M108 28H148" stroke="url(#scheduleGradient)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M128 28V48" stroke="url(#scheduleGradient)" stroke-width="14" stroke-linecap="round"/>
+  <!-- SIDE BUTTON -->
+  <path d="M184 56L198 42" stroke="url(#scheduleGradient)" stroke-width="14" stroke-linecap="round"/>
+  <!-- STOPWATCH BODY -->
+  <circle cx="128" cy="140" r="86" stroke="url(#scheduleGradient)" stroke-width="16"/>
+  <!-- CLOCK HANDS -->
+  <path d="M128 140V102" stroke="url(#scheduleGradient)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M128 140L164 168" stroke="url(#scheduleGradient)" stroke-width="14" stroke-linecap="round"/>
+  <!-- CENTER HUB -->
+  <circle cx="128" cy="140" r="8" fill="url(#scheduleGradient)"/>
+</svg>

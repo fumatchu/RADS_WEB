@@ -1,0 +1,58 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="cmdsToolboxGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Handle -->
+  <path
+    d="M22 10 H42 Q46 10 46 14 V20 H40 V16 H24 V20 H18 V14 Q18 10 22 10 Z"
+    fill="url(#cmdsToolboxGrad)"
+  />
+
+  <!-- Toolbox Body -->
+  <rect
+    x="6"
+    y="18"
+    width="52"
+    height="40"
+    rx="4"
+    fill="none"
+    stroke="url(#cmdsToolboxGrad)"
+    stroke-width="4"
+  />
+
+  <!-- Centered CLI prompt -->
+  <g transform="translate(0,2)">
+
+    <!-- > -->
+    <path
+      d="M18 30 L30 38 L18 46"
+      fill="none"
+      stroke="url(#cmdsToolboxGrad)"
+      stroke-width="6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- _ -->
+    <line
+      x1="34"
+      y1="46"
+      x2="46"
+      y2="46"
+      stroke="url(#cmdsToolboxGrad)"
+      stroke-width="6"
+      stroke-linecap="round"
+    />
+
+  </g>
+
+</svg>

@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="step-icon setupwizard-icon"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="setupGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- terminal window -->
+  <rect x="10"
+        y="12"
+        width="44"
+        height="34"
+        rx="6"
+        stroke="url(#setupGradient)"
+        stroke-width="4"/>
+
+  <!-- prompt arrow -->
+  <path d="M18 24 L25 29 L18 34"
+        stroke="url(#setupGradient)"
+        stroke-width="4"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- command line -->
+  <path d="M30 34 H40"
+        stroke="url(#setupGradient)"
+        stroke-width="4"
+        stroke-linecap="round"/>
+
+  <!-- checkmark badge -->
+  <circle cx="48"
+          cy="48"
+          r="10"
+          fill="white"
+          stroke="url(#setupGradient)"
+          stroke-width="4"/>
+
+  <path d="M43.5 48.5
+           L47 52
+           L53 45"
+        stroke="url(#setupGradient)"
+        stroke-width="4"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+</svg>

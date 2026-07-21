@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="step-icon validation-icon"
+     aria-hidden="true">
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="validationGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="unlockGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <clipPath id="aboveLock">
+      <rect x="0" y="0" width="64" height="20"/>
+    </clipPath>
+  </defs>
+
+  <!-- SWITCH BODY -->
+  <rect x="10" y="36" width="44" height="16" rx="5"
+        stroke="url(#validationGradient)" stroke-width="4"/>
+
+  <!-- SWITCH PORTS -->
+  <circle cx="18" cy="44" r="2.1" fill="url(#validationGradient)"/>
+  <circle cx="26" cy="44" r="2.1" fill="url(#validationGradient)"/>
+  <circle cx="34" cy="44" r="2.1" fill="url(#validationGradient)"/>
+
+  <!-- STATUS LINE -->
+  <path d="M40 44 H48"
+        stroke="url(#validationGradient)"
+        stroke-width="4"
+        stroke-linecap="round"/>
+
+  <!-- LOCK BODY -->
+  <rect x="22" y="20" width="20" height="14" rx="4"
+        fill="none"
+        stroke="url(#unlockGradient)"
+        stroke-width="3.5"/>
+
+  <!-- OPEN SHACKLE -->
+  <path d="M27 20 C27 5 37 3 37 13"
+        clip-path="url(#aboveLock)"
+        stroke="url(#unlockGradient)"
+        stroke-width="4"
+        stroke-linecap="round"
+        fill="none"/>
+
+  <!-- KEY SLOT -->
+  <circle cx="32" cy="26" r="1.8" fill="url(#unlockGradient)"/>
+  <path d="M32 28 V31"
+        stroke="url(#unlockGradient)"
+        stroke-width="2.5"
+        stroke-linecap="round"/>
+</svg>

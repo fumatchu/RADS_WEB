@@ -1,0 +1,45 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cmdsBlueGradient" x1="8" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B9DFFF"/>
+      <stop offset="45%" stop-color="#6FAEFF"/>
+      <stop offset="100%" stop-color="#2F6BFF"/>
+    </linearGradient>
+    <mask id="hideBehindTriangle" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect x="0" y="0" width="64" height="64" fill="white"/>
+      <path d="M39 21L61 57H17L39 21Z" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Server body + details, masked so nothing draws inside the triangle -->
+  <g mask="url(#hideBehindTriangle)">
+    <path
+      d="M11 7H35C38.3 7 41 9.7 41 13V47C41 50.3 38.3 53 35 53H11C7.7 53 5 50.3 5 47V13C5 9.7 7.7 7 11 7Z"
+      stroke="url(#cmdsBlueGradient)"
+      stroke-width="3.5"
+      stroke-linejoin="round"
+      fill="none"
+    />
+    <path d="M13 18H31" stroke="url(#cmdsBlueGradient)" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M13 41H27" stroke="url(#cmdsBlueGradient)" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M13 47H24" stroke="url(#cmdsBlueGradient)" stroke-width="3.5" stroke-linecap="round"/>
+    <rect x="20" y="52" width="4" height="4" rx="1" stroke="url(#cmdsBlueGradient)" stroke-width="2" fill="none"/>
+  </g>
+
+  <!-- Triangle badge, drawn on top -->
+  <path
+    d="M39 23L59 56H19L39 23Z"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  <!-- Directory tree nodes (no connector lines), pulled closer together -->
+  <rect x="35.5" y="36" width="7" height="6" rx="1"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <rect x="28.5" y="46" width="9" height="6" rx="1"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <rect x="40.5" y="46" width="9" height="6" rx="1"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+</svg>
+

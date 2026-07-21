@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="images/logo-rads-suite.svg">
+  <title>RADS-WEB — Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left" onclick="goHome()" style="cursor:pointer;">
+    <img src="images/logo-rads-suite-white.svg" class="logo-icon">
+    <span class="logo-text">RADS-WEB</span>
+    <div class="divider"></div>
+    <span class="logo-subtext">Rocky Active Directory Server — Documentation</span>
+  </div>
+
+  <div class="topbar-right">
+    <div class="search-box">
+      <input type="text" id="docSearch" placeholder="Search docs... (Ctrl+K)">
+    </div>
+    <button class="theme-toggle"><img src="images/icon-moon.svg" alt=""></button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside id="sidebar"></aside>
+
+  <main id="content">
+    <div class="hero-center">
+      <div class="hero-lockup">
+        <div class="hero-text">
+          <div class="hero-text-top">ROCKY ACTIVE DIRECTORY SERVER</div>
+          <div class="hero-text-rule"></div>
+          <div class="hero-text-bottom">RADS-WEB</div>
+          <div class="hero-text-docs">Documentation</div>
+        </div>
+        <div class="hero-icons">
+          <img src="images/icon-server.svg" class="hero-icon" alt="">
+          <div class="hero-divider"></div>
+          <img src="images/icon-sites-services.svg" class="hero-icon" alt="">
+          <div class="hero-divider"></div>
+          <img src="images/icon-dns.svg" class="hero-icon" alt="">
+          <div class="hero-divider"></div>
+          <img src="images/icon-replication.svg" class="hero-icon" alt="">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p>RADS-WEB is a self-hosted dashboard for managing a Samba Active Directory domain controller —
+      users &amp; groups, DNS, DHCP, Group Policy, Sites &amp; Services, replication health, and day-to-day
+      server administration, all from a browser. Use the sidebar to browse install instructions and a full
+      walkthrough of every feature, or press <code>Ctrl+K</code> to search.</p>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

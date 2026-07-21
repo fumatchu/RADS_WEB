@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="step-icon upgrade-icon"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="upgradeGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- switch body -->
+  <rect x="10"
+        y="32"
+        width="44"
+        height="18"
+        rx="5"
+        stroke="url(#upgradeGradient)"
+        stroke-width="4"/>
+
+  <!-- switch ports -->
+  <circle cx="18" cy="41" r="2.3" fill="url(#upgradeGradient)"/>
+  <circle cx="26" cy="41" r="2.3" fill="url(#upgradeGradient)"/>
+  <circle cx="34" cy="41" r="2.3" fill="url(#upgradeGradient)"/>
+
+  <!-- status line -->
+  <path d="M40 41 H48"
+        stroke="url(#upgradeGradient)"
+        stroke-width="4"
+        stroke-linecap="round"/>
+
+  <!-- download arrow -->
+  <path d="M32 10 V26"
+        stroke="url(#upgradeGradient)"
+        stroke-width="5"
+        stroke-linecap="round"/>
+
+  <path d="M22 16 L32 26 L42 16"
+        stroke="url(#upgradeGradient)"
+        stroke-width="5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+</svg>
+

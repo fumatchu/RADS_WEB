@@ -1,0 +1,92 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cmdsBlueGradient" x1="10" y1="12" x2="54" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B9DFFF"/>
+      <stop offset="45%" stop-color="#6FAEFF"/>
+      <stop offset="100%" stop-color="#2F6BFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Left Building -->
+  <rect
+    x="10"
+    y="20"
+    width="20"
+    height="34"
+    rx="2.5"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    fill="none"
+  />
+
+  <rect
+    x="14"
+    y="16"
+    width="12"
+    height="4"
+    rx="1"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    fill="none"
+  />
+
+  <!-- Left Windows -->
+  <rect x="15" y="26" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <rect x="22" y="26" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+
+  <rect x="15" y="35" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <rect x="22" y="35" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+
+  <rect x="15" y="44" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <rect x="22" y="44" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+
+  <!-- Right Building -->
+  <rect
+    x="34"
+    y="12"
+    width="20"
+    height="42"
+    rx="2.5"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    fill="none"
+  />
+
+  <rect
+    x="38"
+    y="8"
+    width="12"
+    height="4"
+    rx="1"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    fill="none"
+  />
+
+  <!-- Right Windows -->
+  <rect x="39" y="18" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <rect x="46" y="18" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+
+  <rect x="39" y="27" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <rect x="46" y="27" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+
+  <rect x="39" y="36" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <rect x="46" y="36" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+
+  <rect x="39" y="45" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <rect x="46" y="45" width="4" height="4" rx="0.6"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+</svg>

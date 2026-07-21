@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="cmds-dns-icon"
+     aria-hidden="true">
+  <defs>
+    <linearGradient id="dnsGradient"
+                    x1="8"
+                    y1="56"
+                    x2="56"
+                    y2="8"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <!-- Globe -->
+  <circle cx="32" cy="32" r="24" stroke="url(#dnsGradient)" stroke-width="4"/>
+  <!-- Vertical meridians -->
+  <path d="M32 8 V56" stroke="url(#dnsGradient)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M22 10 C18 18 18 46 22 54" stroke="url(#dnsGradient)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M42 10 C46 18 46 46 42 54" stroke="url(#dnsGradient)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Latitude lines -->
+  <path d="M10 22 H54" stroke="url(#dnsGradient)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M8 32 H56"  stroke="url(#dnsGradient)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M10 42 H54" stroke="url(#dnsGradient)" stroke-width="3" stroke-linecap="round"/>
+  <!-- DNS label -->
+  <rect x="17" y="24" width="30" height="16" rx="5" fill="#111827" stroke="url(#dnsGradient)" stroke-width="2"/>
+  <text x="32" y="35" text-anchor="middle"
+        font-family="Arial, sans-serif" font-size="10" font-weight="700" fill="#ffffff">DNS</text>
+</svg>

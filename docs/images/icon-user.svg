@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="userGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- outer badge -->
+  <circle cx="32"
+          cy="32"
+          r="25"
+          stroke="url(#userGradient)"
+          stroke-width="4"/>
+
+  <!-- head -->
+  <circle cx="32"
+          cy="24"
+          r="8"
+          stroke="url(#userGradient)"
+          stroke-width="4"/>
+
+  <!-- shoulders/body -->
+  <path d="M18 47
+           C20.5 38.5 25.5 35 32 35
+           C38.5 35 43.5 38.5 46 47"
+        stroke="url(#userGradient)"
+        stroke-width="4"
+        stroke-linecap="round"/>
+
+</svg>

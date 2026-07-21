@@ -1,0 +1,87 @@
+[
+  {
+    "title": "Documentation",
+    "sections": [
+
+      {
+        "title": "Installation Guide",
+        "items": [
+          { "name": "Requirements",              "file": "docs/install/requirements.md" },
+          { "name": "Install Guide",              "file": "docs/install/install.md" },
+          { "name": "First Domain Controller",    "file": "docs/install/first-server.md" },
+          { "name": "Join Existing Domain",       "file": "docs/install/secondary-server.md" }
+        ]
+      },
+
+      {
+        "title": "Dashboard & Health",
+        "items": [
+          { "name": "Directory Health",   "file": "docs/dashboard/directory-health.md" },
+          { "name": "System Monitor",     "file": "docs/dashboard/system-monitor.md" },
+          { "name": "Server Switcher",    "file": "docs/dashboard/server-switcher.md" }
+        ]
+      },
+
+      {
+        "title": "Active Directory",
+        "items": [
+          { "name": "Users & Groups", "file": "docs/ad/users-groups.md" },
+          { "name": "Computers",      "file": "docs/ad/computers.md" },
+          { "name": "CN / OU",        "file": "docs/ad/cn-ou.md" }
+        ]
+      },
+
+      {
+        "title": "DNS",
+        "items": [
+          { "name": "Overview",                 "file": "docs/dns/overview.md" },
+          { "name": "Forward & Reverse Zones",   "file": "docs/dns/zones.md" },
+          { "name": "Hybrid DNS",                "file": "docs/dns/hybrid-dns.md" }
+        ]
+      },
+
+      {
+        "title": "DHCP",
+        "items": [
+          { "name": "Overview",                  "file": "docs/dhcp/overview.md" },
+          { "name": "Scopes & Leases",            "file": "docs/dhcp/scopes-leases.md" },
+          { "name": "DNS / DHCP Integration",     "file": "docs/dhcp/dns-integration.md" }
+        ]
+      },
+
+      {
+        "title": "Sites & Services",
+        "items": [
+          { "name": "Overview",             "file": "docs/sites/overview.md" },
+          { "name": "Sites & Subnets",      "file": "docs/sites/sites-subnets.md" },
+          { "name": "Site Links",           "file": "docs/sites/site-links.md" },
+          { "name": "Domain Controllers",   "file": "docs/sites/domain-controllers.md" },
+          { "name": "FSMO Roles",           "file": "docs/sites/fsmo-roles.md" },
+          { "name": "Replication",         "file": "docs/sites/replication.md" }
+        ]
+      },
+
+      {
+        "title": "Policy",
+        "items": [
+          { "name": "Group Policy Objects",       "file": "docs/policy/gpo.md" },
+          { "name": "SYSVOL",                      "file": "docs/policy/sysvol.md" },
+          { "name": "Password Policy & PSOs",      "file": "docs/policy/password-policy.md" }
+        ]
+      },
+
+      {
+        "title": "System Administration",
+        "items": [
+          { "name": "Generate RSAT File",  "file": "docs/sysadmin/rsat.md" },
+          { "name": "Backup / Restore",    "file": "docs/sysadmin/backup-restore.md" },
+          { "name": "Server Features",     "file": "docs/sysadmin/server-features.md" },
+          { "name": "System Updates",      "file": "docs/sysadmin/system-updates.md" },
+          { "name": "System Tools",        "file": "docs/sysadmin/system-tools.md" },
+          { "name": "Logs",                "file": "docs/sysadmin/logs.md" }
+        ]
+      }
+
+    ]
+  }
+]

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="downloadGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <path
+    fill="url(#downloadGradient)"
+    d="
+      M32 4
+      C34.8 4 37 6.2 37 9
+      L37 26
+
+      L46 17
+      C48 15 51.2 15 53.2 17
+      C55.2 19 55.2 22.2 53.2 24.2
+
+      L35.5 41.9
+      C33.6 43.8 30.4 43.8 28.5 41.9
+
+      L10.8 24.2
+      C8.8 22.2 8.8 19 10.8 17
+      C12.8 15 16 15 18 17
+
+      L27 26
+      L27 9
+      C27 6.2 29.2 4 32 4
+      Z"/>
+</svg>

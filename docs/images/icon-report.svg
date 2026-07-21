@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="imageGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer frame -->
+  <rect x="6"
+        y="6"
+        width="52"
+        height="52"
+        rx="4"
+        stroke="url(#imageGradient)"
+        stroke-width="4"/>
+
+  <!-- Text lines -->
+  <rect x="14"
+        y="14"
+        width="12"
+        height="3"
+        rx="1.5"
+        fill="url(#imageGradient)"/>
+
+  <rect x="14"
+        y="22"
+        width="15"
+        height="3"
+        rx="1.5"
+        fill="url(#imageGradient)"/>
+
+  <!-- Sun -->
+  <circle cx="42"
+          cy="20"
+          r="7"
+          stroke="url(#imageGradient)"
+          stroke-width="4"/>
+
+  <!-- Mountains -->
+  <path d="
+      M15 36
+      L29 48
+      L37 41
+      L51 51"
+      stroke="url(#imageGradient)"
+      stroke-width="4"
+      stroke-linecap="round"
+      stroke-linejoin="round"/>
+
+</svg>

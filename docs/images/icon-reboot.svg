@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="recycle-arrow-icon"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="recycleGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- circular arrow body -->
+  <path
+    d="M49.5 32
+       A17.5 17.5 0 1 1 39.5 16.2"
+    stroke="url(#recycleGradient)"
+    stroke-width="9"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+
+  <!-- arrow head -->
+  <path
+    d="M38.5 5
+       L56 20
+       L34 24
+       Z"
+    fill="url(#recycleGradient)"/>
+
+</svg>
+

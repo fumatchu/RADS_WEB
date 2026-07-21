@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="step-icon validation-icon"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="validationGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- switch body -->
+  <rect x="10"
+        y="32"
+        width="44"
+        height="18"
+        rx="5"
+        stroke="url(#validationGradient)"
+        stroke-width="4"/>
+
+  <!-- switch ports -->
+  <circle cx="18" cy="41" r="2.3" fill="url(#validationGradient)"/>
+  <circle cx="26" cy="41" r="2.3" fill="url(#validationGradient)"/>
+  <circle cx="34" cy="41" r="2.3" fill="url(#validationGradient)"/>
+
+  <!-- status line -->
+  <path d="M40 41 H48"
+        stroke="url(#validationGradient)"
+        stroke-width="4"
+        stroke-linecap="round"/>
+
+  <!-- red question mark -->
+  <path d="M28 13
+           C28 10.2 30.2 8.5 33 8.5
+           C35.8 8.5 38 10.1 38 12.8
+           C38 15 36.8 16.2 35 17.5
+           C33.4 18.6 32.5 19.5 32.5 21.5"
+        stroke="url(#cmdsGradient)"
+        stroke-width="4.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+
+  <!-- question mark dot -->
+  <circle cx="32.5"
+          cy="25.5"
+          r="2.2"
+          fill="url(#cmdsGradient)"/>
+
+</svg>
+

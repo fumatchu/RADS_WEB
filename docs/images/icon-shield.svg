@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="cmds-shield-icon"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="shieldGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shield body (filled) -->
+  <path d="M32 6
+           L10 15
+           V32
+           C10 44.5 19.5 55.5 32 58
+           C44.5 55.5 54 44.5 54 32
+           V15
+           Z"
+        fill="url(#shieldGradient)"
+        opacity="0.18"/>
+
+  <!-- Shield outline -->
+  <path d="M32 6
+           L10 15
+           V32
+           C10 44.5 19.5 55.5 32 58
+           C44.5 55.5 54 44.5 54 32
+           V15
+           Z"
+        stroke="url(#shieldGradient)"
+        stroke-width="3.5"
+        stroke-linejoin="round"/>
+
+  <!-- Checkmark -->
+  <path d="M22 32 L29 39 L42 25"
+        stroke="url(#shieldGradient)"
+        stroke-width="3.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+</svg>

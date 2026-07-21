@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="step-icon meraki-user-icon"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="merakiGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- centered Meraki M -->
+  <path d="M24 24
+           V10
+           L32 20
+           L40 10
+           V24"
+        stroke="url(#merakiGradient)"
+        stroke-width="4.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- switch body -->
+  <rect x="10"
+        y="32"
+        width="44"
+        height="18"
+        rx="5"
+        stroke="url(#merakiGradient)"
+        stroke-width="4"/>
+
+  <!-- switch ports -->
+  <circle cx="18" cy="41" r="2.3" fill="url(#merakiGradient)"/>
+  <circle cx="26" cy="41" r="2.3" fill="url(#merakiGradient)"/>
+  <circle cx="34" cy="41" r="2.3" fill="url(#merakiGradient)"/>
+
+  <!-- status line -->
+  <path d="M40 41 H48"
+        stroke="url(#merakiGradient)"
+        stroke-width="4"
+        stroke-linecap="round"/>
+
+</svg>

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="cmds-database-icon"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="dbGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Top ellipse -->
+  <ellipse cx="32"
+           cy="14"
+           rx="22"
+           ry="8"
+           stroke="url(#dbGradient)"
+           stroke-width="4"/>
+
+  <!-- Outer body -->
+  <path d="
+      M10 14
+      V50
+      C10 54.4 19.8 58 32 58
+      C44.2 58 54 54.4 54 50
+      V14"
+      stroke="url(#dbGradient)"
+      stroke-width="4"
+      stroke-linecap="round"
+      stroke-linejoin="round"/>
+
+  <!-- Middle shelves -->
+  <path d="
+      M10 26
+      C10 30.4 19.8 34 32 34
+      C44.2 34 54 30.4 54 26"
+      stroke="url(#dbGradient)"
+      stroke-width="4"
+      stroke-linecap="round"/>
+
+  <path d="
+      M10 38
+      C10 42.4 19.8 46 32 46
+      C44.2 46 54 42.4 54 38"
+      stroke="url(#dbGradient)"
+      stroke-width="4"
+      stroke-linecap="round"/>
+
+  <!-- Status dots -->
+  <circle cx="16" cy="26" r="2.5" fill="url(#dbGradient)"/>
+  <circle cx="16" cy="38" r="2.5" fill="url(#dbGradient)"/>
+  <circle cx="16" cy="50" r="2.5" fill="url(#dbGradient)"/>
+
+</svg>

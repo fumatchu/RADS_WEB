@@ -1,0 +1,33 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="netGradient" x1="8" y1="5" x2="59" y2="59" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B9DFFF"/>
+      <stop offset="45%" stop-color="#6FAEFF"/>
+      <stop offset="100%" stop-color="#2F6BFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded triangle -->
+  <path
+    d="M35.13 11.26 L55.87 52.74 Q59 59 52 59 L12 59 Q5 59 8.13 52.74 L28.87 11.26 Q32 5 35.13 11.26 Z"
+    stroke="url(#netGradient)"
+    stroke-width="4"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    fill="none"
+  />
+
+  <!-- Connectors -->
+  <path d="M32 24.5V37.5" stroke="url(#netGradient)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M25.5 42H27.5" stroke="url(#netGradient)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M36.5 42H38.5" stroke="url(#netGradient)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M32 46.5V48" stroke="url(#netGradient)" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Nodes -->
+  <rect x="27.5" y="15.5" width="9" height="9" rx="3" stroke="url(#netGradient)" stroke-width="3" fill="none"/>
+  <rect x="16.5" y="37.5" width="9" height="9" rx="3" stroke="url(#netGradient)" stroke-width="3" fill="none"/>
+  <rect x="27.5" y="37.5" width="9" height="9" rx="3" stroke="url(#netGradient)" stroke-width="3" fill="none"/>
+  <rect x="38.5" y="37.5" width="9" height="9" rx="3" stroke="url(#netGradient)" stroke-width="3" fill="none"/>
+  <rect x="27.5" y="48" width="9" height="9" rx="3" stroke="url(#netGradient)" stroke-width="3" fill="none"/>
+</svg>
+

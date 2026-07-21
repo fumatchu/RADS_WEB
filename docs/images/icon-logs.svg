@@ -1,0 +1,40 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="cmdsGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Screen -->
+  <rect
+    x="6"
+    y="8"
+    width="52"
+    height="48"
+    rx="7"
+    ry="7"
+    fill="none"
+    stroke="url(#cmdsGrad)"
+    stroke-width="3"
+  />
+
+  <!-- Bold log lines -->
+  <rect x="16" y="18" width="30" height="3" rx="1.5"
+        fill="url(#cmdsGrad)" />
+
+  <rect x="16" y="25" width="24" height="3" rx="1.5"
+        fill="url(#cmdsGrad)" />
+
+  <rect x="16" y="32" width="34" height="3" rx="1.5"
+        fill="url(#cmdsGrad)" />
+
+  <rect x="16" y="39" width="20" height="3" rx="1.5"
+        fill="url(#cmdsGrad)" />
+
+</svg>

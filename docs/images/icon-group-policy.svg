@@ -1,0 +1,83 @@
+<svg width="64" height="64" viewBox="8 5 48 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cmdsBlueGradient" x1="10" y1="12" x2="54" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B9DFFF"/>
+      <stop offset="45%" stop-color="#6FAEFF"/>
+      <stop offset="100%" stop-color="#2F6BFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Document outline -->
+  <path
+    d="M15 8H43L53 18V52C53 55 51 57 48 57H16C13 57 11 55 11 52V12C11 10 13 8 15 8Z"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    stroke-linejoin="round"
+    fill="none"
+  />
+
+  <!-- Folded corner -->
+  <path
+    d="M43 8V18H53"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+
+  <!-- Top policy line -->
+  <path
+    d="M21 20H42"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    stroke-linecap="round"
+  />
+
+  <!-- Smaller centered gear -->
+  <path
+    d="M32 27
+       L33.2 29.1
+       L35.6 28.7
+       L37.3 30.4
+       L36.9 32.8
+       L39 34
+       L36.9 35.2
+       L37.3 37.6
+       L35.6 39.3
+       L33.2 38.9
+       L32 41
+       L30.8 38.9
+       L28.4 39.3
+       L26.7 37.6
+       L27.1 35.2
+       L25 34
+       L27.1 32.8
+       L26.7 30.4
+       L28.4 28.7
+       L30.8 29.1
+       Z"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="2.3"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+
+  <circle
+    cx="32"
+    cy="34"
+    r="3"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="2.3"
+    fill="none"
+  />
+
+  <!-- Bottom policy lines -->
+  <path
+    d="M21 47H43M21 52H39"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    stroke-linecap="round"
+  />
+</svg>

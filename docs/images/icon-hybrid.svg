@@ -1,0 +1,87 @@
+<svg viewBox="-4 -2 34 28" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- =========================================
+       GRADIENT
+  ========================================== -->
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="hybridGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- =========================================
+       HYBRID SWITCH + CLOUD OUTLINE
+  ========================================== -->
+  <path
+    d="
+      M4 9
+      L9.5 5.5
+      L14 8.3
+
+      C14.7 6.9 16 6.1 17.5 6.1
+      C19.7 6.1 21.4 7.7 21.8 9.8
+      C23 10.1 24 11.2 24 12.6
+      C24 14.6 22.4 16.2 20.4 16.2
+
+      H14
+
+      L9.5 19
+      L4 15.7
+      Z
+    "
+    fill="none"
+    stroke="url(#hybridGrad)"
+    stroke-width="1.5"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+
+  <!-- =========================================
+       SWITCH TOP LINE
+  ========================================== -->
+  <path
+    d="
+      M4 9
+      L9.5 12.2
+      L14 9.4
+    "
+    fill="none"
+    stroke="url(#hybridGrad)"
+    stroke-width="1.1"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+  />
+
+  <!-- =========================================
+       SWITCH CENTER EDGE
+  ========================================== -->
+  <path
+    d="
+      M9.5 12.2
+      V19
+    "
+    fill="none"
+    stroke="url(#hybridGrad)"
+    stroke-width="1.1"
+    stroke-linecap="round"
+  />
+
+  <!-- =========================================
+       MIGRATION / HYBRID DOTS
+  ========================================== -->
+
+   <!-- =========================================
+     MIGRATION / HYBRID DOTS
+========================================== -->
+
+<circle cx="10.8" cy="13.6" r="0.8" fill="url(#cmdsGradient)"/>
+<circle cx="12.0" cy="13.6" r="0.8" fill="url(#cmdsGradient)"/>
+<circle cx="13.2" cy="13.6" r="0.8" fill="url(#cmdsGradient)"/>
+<circle cx="14.4" cy="13.6" r="0.8" fill="url(#cmdsGradient)"/>
+<circle cx="15.6" cy="13.6" r="0.8" fill="url(#cmdsGradient)"/>
+</svg>

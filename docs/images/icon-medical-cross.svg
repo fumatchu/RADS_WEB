@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     width="64"
+     height="64"
+     role="img"
+     aria-labelledby="title desc">
+  <title id="title">Directory Health</title>
+  <desc id="desc">Medical cross icon matching the site's blue gradient.</desc>
+  <defs>
+    <linearGradient id="cmdsBlueGradient" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B9DFFF"/>
+      <stop offset="45%" stop-color="#6FAEFF"/>
+      <stop offset="100%" stop-color="#2F6BFF"/>
+    </linearGradient>
+  </defs>
+  <path
+    d="M25 8
+       H39
+       V25
+       H56
+       V39
+       H39
+       V56
+       H25
+       V39
+       H8
+       V25
+       H25
+       Z"
+    fill="url(#cmdsBlueGradient)"/>
+</svg>

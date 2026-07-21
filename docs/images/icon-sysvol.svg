@@ -1,0 +1,24 @@
+<svg width="64" height="64" viewBox="9 9 48 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cmdsBlueGradient" x1="12" y1="12" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B9DFFF"/>
+      <stop offset="45%" stop-color="#6FAEFF"/>
+      <stop offset="100%" stop-color="#2F6BFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Folder outline (taller proportions, matches other policy icons) -->
+  <path
+    d="M17 58 Q12 58 12 53 L12 17 Q12 12 17 12 L26 12 Q28 12 29.2 13.6 L32.8 18.4 Q34 20 36 20 L49 20 Q54 20 54 25 L54 53 Q54 58 49 58 L17 58 Z"
+    stroke="url(#cmdsBlueGradient)"
+    stroke-width="3.5"
+    stroke-linejoin="round"
+    fill="none"
+  />
+
+  <!-- Globe (network share) — same simple globe glyph as DNS Management -->
+  <circle cx="33" cy="39" r="9" stroke="url(#cmdsBlueGradient)" stroke-width="2.5" fill="none"/>
+  <path d="M24 39H42" stroke="url(#cmdsBlueGradient)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M33 30a13.77 13.77 0 0 1 3.6 9 13.77 13.77 0 0 1-3.6 9 13.77 13.77 0 0 1-3.6-9 13.77 13.77 0 0 1 3.6-9z"
+        stroke="url(#cmdsBlueGradient)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+</svg>

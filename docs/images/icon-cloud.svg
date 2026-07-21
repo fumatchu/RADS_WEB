@@ -1,0 +1,33 @@
+<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="cloudGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Cloud Outline -->
+  <path
+    d="
+      M7.5 18
+      H17
+      C19.8 18 22 15.9 22 13.3
+      C22 10.9 20.2 8.9 17.7 8.6
+      C17.2 5.4 14.6 3 11.3 3
+      C8.7 3 6.5 4.4 5.3 6.6
+      C2.8 6.9 1 8.9 1 11.4
+      C1 15 3.9 18 7.5 18
+      Z"
+    fill="none"
+    stroke="url(#cloudGrad)"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+</svg>

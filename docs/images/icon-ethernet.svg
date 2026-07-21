@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="cmds-ethernet-icon"
+     aria-hidden="true">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- outer rounded square -->
+  <rect x="8"
+        y="8"
+        width="48"
+        height="48"
+        rx="6"
+        stroke="url(#cmdsGradient)"
+        stroke-width="4"/>
+
+  <!-- ethernet port body -->
+  <path d="M20 20
+           H44
+           C45.2 20 46 20.8 46 22
+           V39
+           C46 40.2 45.2 41 44 41
+           H39
+           V45
+           C39 46.1 38.1 47 37 47
+           H27
+           C25.9 47 25 46.1 25 45
+           V41
+           H20
+           C18.8 41 18 40.2 18 39
+           V22
+           C18 20.8 18.8 20 20 20Z"
+        fill="url(#cmdsGradient)"/>
+
+  <!-- contact pins -->
+  <rect x="22" y="24" width="3" height="8" rx="0.6" fill="#ffffff"/>
+  <rect x="28" y="24" width="3" height="8" rx="0.6" fill="#ffffff"/>
+  <rect x="34" y="24" width="3" height="8" rx="0.6" fill="#ffffff"/>
+  <rect x="40" y="24" width="3" height="8" rx="0.6" fill="#ffffff"/>
+
+</svg>

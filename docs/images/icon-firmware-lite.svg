@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 256 256"
+     fill="none">
+
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+
+    <linearGradient id="firmwareLiteGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+
+  </defs>
+
+  <!-- ====================================== -->
+  <!-- UPLOAD ARROW -->
+  <!-- ====================================== -->
+
+  <path
+    d="M128 24V78"
+    stroke="url(#firmwareLiteGradient)"
+    stroke-width="16"
+    stroke-linecap="round"/>
+
+  <path
+    d="M96 56L128 24L160 56"
+    stroke="url(#firmwareLiteGradient)"
+    stroke-width="16"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+
+  <!-- ====================================== -->
+  <!-- TOP OF BOX -->
+  <!-- ====================================== -->
+
+  <path
+    d="M128 92L40 144L128 194L216 144L128 92Z"
+    stroke="url(#firmwareLiteGradient)"
+    stroke-width="14"
+    stroke-linejoin="round"/>
+
+  <!-- ====================================== -->
+  <!-- LEFT SIDE -->
+  <!-- ====================================== -->
+
+  <path
+    d="M40 144V196L128 248V194"
+    stroke="url(#firmwareLiteGradient)"
+    stroke-width="14"
+    stroke-linejoin="round"/>
+
+  <!-- ====================================== -->
+  <!-- RIGHT SIDE -->
+  <!-- ====================================== -->
+
+  <path
+    d="M216 144V196L128 248"
+    stroke="url(#firmwareLiteGradient)"
+    stroke-width="14"
+    stroke-linejoin="round"/>
+
+  <!-- ====================================== -->
+  <!-- CENTER SEAM -->
+  <!-- ====================================== -->
+
+  <path
+    d="M128 194V248"
+    stroke="url(#firmwareLiteGradient)"
+    stroke-width="14"
+    stroke-linecap="round"/>
+
+  <!-- ====================================== -->
+  <!-- BIGGER L LABEL -->
+  <!-- ====================================== -->
+
+  <text
+    x="128"
+    y="152"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    font-size="64"
+    font-weight="900"
+    fill="url(#firmwareLiteGradient)">
+
+    L
+
+  </text>
+
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="step-icon migrate-icon"
+     aria-hidden="true">
+  <defs>
+    <linearGradient id="cmdsGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="migrateGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#A7D5FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <!-- TOP ARROW -->
+  <path d="M18 27 C23 14 38 12 49 18"
+        stroke="url(#migrateGradient)"
+        stroke-width="6"
+        stroke-linecap="round"/>
+  <path d="M56 22 L40 22 L48 8 Z"
+        fill="url(#migrateGradient)"/>
+  <!-- BOTTOM ARROW -->
+  <path d="M46 37 C41 50 26 52 15 46"
+        stroke="url(#migrateGradient)"
+        stroke-width="6"
+        stroke-linecap="round"/>
+  <path d="M8 41 L16 55 L24 41 Z"
+        fill="url(#migrateGradient)"/>
+</svg>
+

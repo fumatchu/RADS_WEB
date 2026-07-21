@@ -1,0 +1,17 @@
+<svg width="64" height="64" viewBox="15 7 34 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cmdsBlueGradient" x1="14" y1="8" x2="50" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B9DFFF"/>
+      <stop offset="45%" stop-color="#6FAEFF"/>
+      <stop offset="100%" stop-color="#2F6BFF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Document with folded corner -->
+  <path d="M18 10 H38 L46 18 V54 H18 Z" stroke="url(#cmdsBlueGradient)" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M38 10 V18 H46" stroke="url(#cmdsBlueGradient)" stroke-width="3.5" stroke-linejoin="round"/>
+
+  <!-- Download arrow -->
+  <path d="M32 24V40" stroke="url(#cmdsBlueGradient)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M25 34L32 41L39 34" stroke="url(#cmdsBlueGradient)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

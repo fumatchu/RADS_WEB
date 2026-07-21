@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 64 64"
+     fill="none"
+     class="step-icon upgrade-icon"
+     aria-hidden="true">
+  <defs>
+    <linearGradient id="cmdsBlueGradient" x1="10" y1="10" x2="54" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#B9DFFF"/>
+      <stop offset="45%" stop-color="#6FAEFF"/>
+      <stop offset="100%" stop-color="#2F6BFF"/>
+    </linearGradient>
+  </defs>
+  <!-- switch body -->
+  <rect x="10"
+        y="32"
+        width="44"
+        height="18"
+        rx="5"
+        stroke="url(#cmdsBlueGradient)"
+        stroke-width="4"/>
+  <!-- switch ports -->
+  <circle cx="18" cy="41" r="2.3" fill="url(#cmdsBlueGradient)"/>
+  <circle cx="26" cy="41" r="2.3" fill="url(#cmdsBlueGradient)"/>
+  <circle cx="34" cy="41" r="2.3" fill="url(#cmdsBlueGradient)"/>
+  <!-- status line -->
+  <path d="M40 41 H48"
+        stroke="url(#cmdsBlueGradient)"
+        stroke-width="4"
+        stroke-linecap="round"/>
+</svg>
