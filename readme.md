@@ -91,7 +91,7 @@ the browser when you need it.
 
 ## Requirements
 
-- **OS:** Rocky Linux 10.0+ (the installer checks and refuses to continue on anything older)
+- **OS:** The latest version of Rocky Linux 10 (the installer checks and refuses to continue on anything older than Rocky 10)
 - **Access:** Root, and working internet connectivity during install (EPEL/CRB/Devel repos are enabled, a full
   `dnf upgrade` runs, and the RADS-WEB application is pulled from this repository)
 - **Network:** A static IP is strongly recommended (the installer will offer to configure one if the interface
@@ -110,7 +110,23 @@ Have ready before you start:
 
 ## Installation
 
-As root, on the server you're installing:
+### 1. Install Rocky Linux
+
+Download the Rocky Linux 10 **minimal** ISO and install it on the server:
+
+**https://download.rockylinux.org/pub/rocky/10/isos/x86_64/Rocky-10.2-x86_64-minimal.iso**
+
+(Check [rockylinux.org/download](https://rockylinux.org/download) for the latest 10.x point release if a newer
+one has shipped since.)
+
+During the OS install, make sure to:
+
+- **Enable root SSH access** — Rocky's installer disables SSH login for root by default
+- **Set a root password** — RADS-WEB's installer must be run as root
+
+### 2. Run the Installer
+
+As root, on the server you just installed:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/fumatchu/RADS_WEB/main/RADS_WEB-Installer.sh | bash
@@ -118,7 +134,7 @@ curl -fsSL https://raw.githubusercontent.com/fumatchu/RADS_WEB/main/RADS_WEB-Ins
 
 This bootstrap script:
 
-1. Confirms you're running as root, on Rocky Linux 10.0+
+1. Confirms you're running as root, on the latest version of Rocky Linux 10
 2. Installs a handful of small dependencies (`wget`, `git`, `ipcalc`, `dialog`)
 3. Clones this repository
 4. Launches the main installer, which asks which kind of install this is:
