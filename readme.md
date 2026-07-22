@@ -11,6 +11,18 @@ browser-based UI, secured behind the same login your Rocky server already uses.
 
 ---
 
+## Screenshots
+
+| Login | Dashboard |
+|---|---|
+| ![Login](screenshots/login.jpg) | ![Dashboard](screenshots/dashboard.jpg) |
+
+**Directory Health**
+
+![Directory Health](screenshots/directory-health.png)
+
+---
+
 ## What It Does
 
 RADS-WEB is a Samba4 AD DC (built from SRPM, since Rocky's stock packaging doesn't ship the AD DC role) paired
