@@ -1255,6 +1255,15 @@ Listen 443 https
     ProxyRequests    Off
     ProxyPreserveHost On
 
+    # API routes like /api/sites/subnets/{cidr} carry a literal "/" (from
+    # the CIDR) URL-encoded as %2F in the path — e.g. editing or deleting
+    # 192.168.245.0/24 hits /api/sites/subnets/192.168.245.0%2F24. Apache's
+    # default AllowEncodedSlashes (Off) 404s any request URI containing an
+    # encoded slash before it ever reaches ProxyPass/mod_proxy, so PATCH/DELETE
+    # on subnets silently failed (POST/GET without a CIDR in the path were
+    # unaffected). Must be On for those routes to reach the backend at all.
+    AllowEncodedSlashes On
+
     # WebSocket PTY terminal — must come before the /api/ catch-all
     ProxyPass        /ws/ ws://127.0.0.1:8000/ws/
     ProxyPassReverse /ws/ ws://127.0.0.1:8000/ws/
@@ -1503,21 +1512,11 @@ EOF
 # =============================================================
 update_issue_file() {
   section "Login Banner"
-  local ISSUE_FQDN; ISSUE_FQDN=$(hostname -f 2>/dev/null || hostname)
-  local ESC=$'\033'
-  local C_LABEL="${ESC}[1;34m"
-  local C_ROLE="${ESC}[1;36m"
-  local C_RESET="${ESC}[0m"
-  cat > /etc/issue <<EOF
+  cat > /etc/issue <<'EOF'
 \S
-${C_LABEL}Kernel${C_RESET} \r on an \m
-${C_LABEL}Hostname:${C_RESET} \n
-${C_LABEL}IP Address:${C_RESET} \4
-
-${C_LABEL}Please use the Web GUI for Administration${C_RESET}
-${C_LABEL}https://${ISSUE_FQDN}${C_RESET}
-
-${C_ROLE}ROLE: Domain Controller${C_RESET}
+Kernel \r on an \m
+Hostname: \n
+IP Address: \4
 EOF
   step_ok "/etc/issue updated"
   sleep 1
