@@ -460,11 +460,12 @@ install_base_packages() {
   section "Base Packages"
   local log="$LOGDIR/packages.log"; : > "$log"
   local PKGS=(
-    tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
+    gcc make tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
     rpmbuild rpm-build mock createrepo_c
     krb5-workstation openldap-clients bind-utils
     chrony net-tools dmidecode ipcalc
     ntsysv wget curl rsync
+    nano htop iotop iptraf-ng mc
     fail2ban
     httpd mod_ssl mod_proxy_html
     python3 python3-pip python3-psutil pam-devel python3-devel
@@ -895,17 +896,10 @@ join_samba_ad() {
 
   [[ -f /etc/samba/smb.conf ]] && mv -f /etc/samba/smb.conf /etc/samba/smb.bak.orig
 
-  # REAL INCIDENT (2026-07-23): on FirstServer's provision_samba_ad(),
-  # samba-tool's own netcmd error handler caught an internal exception deep
-  # in provisioning (MemoryError in setsysvolacl), printed
-  # "ERROR(<class '...'>): uncaught exception", and still exited 0 — reliably,
-  # on two consecutive fresh full rebuilds, when provisioning ran immediately
-  # after the RPM install transaction finished. A join can hit the exact same
-  # sysvol ACL code path. Give the system a moment to settle first — a manual
-  # retry run a minute or two later never hit it.
   step_info "Letting the system settle after the RPM install before joining..."
   sync
   sleep 5
+
   local _join_log="${log%/*}/samba-join.log"
   echo "[join] realm=${AD_REALM} existing_dc=${ADDC}" > "$_join_log"
   systemd-run --wait \
@@ -919,13 +913,6 @@ join_samba_ad() {
   local JOIN_RC=$?
   [[ "$_join_log" != "$log" ]] && cat "$_join_log" >> "$log"
 
-  # The uncaught-exception signature ("ERROR(<class '...'>): uncaught
-  # exception") is distinct from samba-tool's normal user-facing failure
-  # messages (which read "ERROR: <reason>"). If join exited 0 and the ONLY
-  # thing in the log is that specific signature, the join itself succeeded
-  # and just needs the same sysvol ACL repair as FirstServer — no need to
-  # redo the whole join. Anything else (nonzero exit, or a genuine "ERROR:"
-  # message) is a real failure and still aborts.
   if [[ $JOIN_RC -eq 0 ]] && grep -q "^ERROR(<class" "$_join_log" && ! grep -qi "^ERROR:" "$_join_log"; then
     step_info "Join reported success but logged an internal error — repairing sysvol ACLs..."
     if samba-tool ntacl sysvolreset >>"$log" 2>&1; then

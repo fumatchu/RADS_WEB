@@ -367,11 +367,12 @@ install_base_packages() {
   section "Base Packages"
   local log="$LOGDIR/packages.log"; : > "$log"
   local PKGS=(
-    tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
+    gcc make tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
     rpmbuild rpm-build mock createrepo_c
     krb5-workstation openldap-clients bind-utils
     chrony net-tools dmidecode ipcalc
     ntsysv wget curl rsync
+    nano htop iotop iptraf-ng mc
     fail2ban
     httpd mod_ssl mod_proxy_html
     python3 python3-pip python3-psutil pam-devel python3-devel
@@ -865,10 +866,10 @@ provision_samba_ad() {
   # REAL INCIDENT (2026-07-23): even with systemd-run, samba-tool's own sysvol
   # ACL step (setsysvolacl → smbd.set_simple_acl) reliably crashed with an
   # uncaught MemoryError when provisioning ran immediately after the RPM
-  # install transaction finished — reproduced on two consecutive fresh full
-  # rebuilds, confirmed via samba-provision.log both times. A manual retry run
-  # a minute or two later (after typing a few commands) never hit it, so a
-  # short settle pause here is cheap insurance against the timing window.
+  # install transaction finished — reproduced repeatedly on fresh full
+  # rebuilds, confirmed via samba-provision.log. A manual retry run a minute
+  # or two later (after typing a few commands) never hit it, so a short
+  # settle pause here is cheap insurance against the timing window.
   step_info "Letting the system settle after the RPM install before provisioning..."
   sync
   sleep 5
@@ -897,7 +898,7 @@ provision_samba_ad() {
   # "ERROR(<class '...'>): uncaught exception", and STILL exit 0 — so
   # PROVISION_RC alone does not reliably catch this failure mode. Everything
   # before that point (schema, forest/domain updates, DNS, Kerberos config)
-  # had already completed successfully in both observed cases, so rather than
+  # had already completed successfully in every observed case, so rather than
   # re-running the entire multi-minute provision, just redo the sysvol ACL
   # pass with the command Samba itself documents for exactly this repair.
   if grep -q "^ERROR(" "$_prov_log" 2>/dev/null; then
