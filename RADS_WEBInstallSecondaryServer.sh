@@ -460,11 +460,12 @@ install_base_packages() {
   section "Base Packages"
   local log="$LOGDIR/packages.log"; : > "$log"
   local PKGS=(
-    tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
+    gcc make tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
     rpmbuild rpm-build mock createrepo_c
     krb5-workstation openldap-clients bind-utils
     chrony net-tools dmidecode ipcalc
     ntsysv wget curl rsync
+    nano htop iotop iptraf-ng mc
     fail2ban
     httpd mod_ssl mod_proxy_html
     python3 python3-pip python3-psutil pam-devel python3-devel
@@ -607,20 +608,24 @@ build_samba_from_srpm() {
       step_info "Rebuilding from scratch as requested..."
     fi
   fi
-  # ── Build prerequisites: NOT installed on host, intentionally ────────────
-  # See RADS_WEBInstallFirstServer.sh for the full incident writeup. Short
-  # version: a host-level BUILD_DEPS install (@development-tools + a pile of
-  # -devel headers) followed by an "appliance hardening" removal step caused
-  # dnf's solver to cascade-erase samba-dc/samba-tools/python3-samba/
-  # krb5-server/avahi/certmonger/cepces on two separate fresh installs — a
-  # --setopt=protected_packages guard did NOT stop it either. mock resolves
-  # 100% of Samba's BuildRequires itself inside its own isolated chroot
-  # (config_opts['dnf_builddep_opts'] below), so none of this was ever
-  # load-bearing for the compile — it was also the exact package class behind
-  # the original `dnf update` deadlock incident (exact-NVR-pinned against
-  # glibc/glib2 from the devel repo). Skipping the install here closes both
-  # bugs and leaves nothing to clean up afterward.
-  step_ok "Build dependencies resolved by mock inside its isolated chroot (nothing installed on host)"
+  local BUILD_DEPS=(
+    "@development-tools"
+    python3-devel gnutls-devel libacl-devel openldap-devel
+    pam-devel cups-libs libtalloc-devel libtevent-devel
+    libldb-devel libtdb-devel libwbclient-devel
+    samba-common-libs krb5-devel avahi-devel dbus-devel
+    perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt
+    quota-devel libaio-devel iniparser-devel
+    gpgme-devel jansson-devel libnsl2-devel
+    python3-dns python3-markdown
+  )
+  printf "  ${YELLOW}→${TEXTRESET} Installing Samba build dependencies "
+  for dep in "${BUILD_DEPS[@]}"; do
+    dnf -y install "$dep" --setopt=tsflags=nodocs --color=never >>"$log" 2>&1 || true
+    printf "."
+  done
+  echo ""
+  step_ok "Build dependencies installed (${#BUILD_DEPS[@]} packages)"
   step_info "Setting up mock build environment for Rocky 10..."
   usermod -a -G mock root >>"$log" 2>&1 || true
   local SRPM_DIR="/root/samba-srpm"
@@ -842,21 +847,31 @@ _install_samba_rpms() {
   else
     step_info "samba.smbd not found in samba3/ — join may fail"
   fi
-  # ── Appliance hardening, take 3 ───────────────────────────────────────────
-  # Nothing to remove here anymore — see the comment above where BUILD_DEPS
-  # used to be installed. We never install host-level -devel headers or
-  # @development-tools in the first place (mock resolves everything itself),
-  # so there's no package-removal cascade risk left to guard against. The one
-  # thing still worth doing is making sure "devel" (enabled early in the
-  # install for `dnf download --source samba` / mock's own --enablerepo=devel)
-  # doesn't stay enabled indefinitely — a plain repo disable, no package
-  # removal, so no Requires-cascade risk.
+  # ── Appliance hardening: remove build-only tooling now that Samba's built ──
+  # This is meant to be an appliance — nobody should ever need a compiler on
+  # the console. The mock chroot used above (and reused later by
+  # samba_update.py's on-demand rebuild pipeline) builds Samba in its own
+  # isolated root with its own dependencies; none of these host-level -devel
+  # headers or @development-tools are needed for that. Leaving them installed
+  # long-term is actively harmful: they're exact-NVR-pinned against glibc/
+  # glib2/etc from the devel repo, and once baseos/appstream move past that
+  # pin (which happens on a routine schedule), every future `dnf update`
+  # deadlocks with unresolvable dependency errors (real incident, 2026-07).
+  # mock/createrepo_c/rpm-build are deliberately NOT removed — samba_update.py's
+  # rebuild pipeline calls them directly without reinstalling first.
+  step_info "Removing build-only tooling (appliance hardening)..."
+  dnf -y groupremove "Development Tools" >/dev/null 2>&1 || true
+  dnf -y remove gcc \
+    python3-devel gnutls-devel libacl-devel openldap-devel \
+    libtalloc-devel libtevent-devel libldb-devel libtdb-devel \
+    libwbclient-devel krb5-devel avahi-devel dbus-devel \
+    perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt \
+    quota-devel libaio-devel iniparser-devel gpgme-devel \
+    jansson-devel libnsl2-devel python3-dns python3-markdown \
+    >/dev/null 2>&1 || true
+  dnf -y autoremove >/dev/null 2>&1 || true
   dnf config-manager --set-disabled devel >/dev/null 2>&1 || true
-  if ! command -v samba-tool >/dev/null 2>&1; then
-    step_fail "samba-tool missing after Samba RPM install — investigate before provisioning"
-  else
-    step_ok "'devel' repo disabled — no build tooling was ever installed on host to clean up"
-  fi
+  step_ok "Build tooling removed (mock/createrepo_c/rpm-build kept for future Samba rebuilds), 'devel' disabled"
 }
 # =============================================================
 # STEP 19 — JOIN EXISTING SAMBA AD DOMAIN
@@ -895,6 +910,17 @@ join_samba_ad() {
 
   [[ -f /etc/samba/smb.conf ]] && mv -f /etc/samba/smb.conf /etc/samba/smb.bak.orig
 
+  # REAL INCIDENT (2026-07-23): on FirstServer's provision_samba_ad(),
+  # samba-tool's own netcmd error handler caught an internal exception deep
+  # in provisioning (MemoryError in setsysvolacl), printed
+  # "ERROR(<class '...'>): uncaught exception", and still exited 0 — reliably,
+  # on two consecutive fresh full rebuilds, when provisioning ran immediately
+  # after the RPM install transaction finished. A join can hit the exact same
+  # sysvol ACL code path. Give the system a moment to settle first — a manual
+  # retry run a minute or two later never hit it.
+  step_info "Letting the system settle after the RPM install before joining..."
+  sync
+  sleep 5
   local _join_log="${log%/*}/samba-join.log"
   echo "[join] realm=${AD_REALM} existing_dc=${ADDC}" > "$_join_log"
   systemd-run --wait \
@@ -908,7 +934,21 @@ join_samba_ad() {
   local JOIN_RC=$?
   [[ "$_join_log" != "$log" ]] && cat "$_join_log" >> "$log"
 
-  if [[ $JOIN_RC -ne 0 ]] || grep -qi "^ERROR" "$_join_log"; then
+  # The uncaught-exception signature ("ERROR(<class '...'>): uncaught
+  # exception") is distinct from samba-tool's normal user-facing failure
+  # messages (which read "ERROR: <reason>"). If join exited 0 and the ONLY
+  # thing in the log is that specific signature, the join itself succeeded
+  # and just needs the same sysvol ACL repair as FirstServer — no need to
+  # redo the whole join. Anything else (nonzero exit, or a genuine "ERROR:"
+  # message) is a real failure and still aborts.
+  if [[ $JOIN_RC -eq 0 ]] && grep -q "^ERROR(<class" "$_join_log" && ! grep -qi "^ERROR:" "$_join_log"; then
+    step_info "Join reported success but logged an internal error — repairing sysvol ACLs..."
+    if samba-tool ntacl sysvolreset >>"$log" 2>&1; then
+      step_ok "Sysvol ACLs repaired via 'samba-tool ntacl sysvolreset'"
+    else
+      step_fail "Sysvol ACL repair failed — see ${log} (DC joined but sysvol permissions may be wrong; rerun 'samba-tool ntacl sysvolreset' manually)"
+    fi
+  elif [[ $JOIN_RC -ne 0 ]] || grep -qi "^ERROR" "$_join_log"; then
     step_fail "Samba AD domain join failed — see ${_join_log}"
     dialog --title "Join Failed" --msgbox "Samba AD domain join failed.\nSee: ${_join_log}" 8 65
     exit 1

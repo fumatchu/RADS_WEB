@@ -367,11 +367,12 @@ install_base_packages() {
   section "Base Packages"
   local log="$LOGDIR/packages.log"; : > "$log"
   local PKGS=(
-    tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
+    gcc make tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
     rpmbuild rpm-build mock createrepo_c
     krb5-workstation openldap-clients bind-utils
     chrony net-tools dmidecode ipcalc
     ntsysv wget curl rsync
+    nano htop iotop iptraf-ng mc
     fail2ban
     httpd mod_ssl mod_proxy_html
     python3 python3-pip python3-psutil pam-devel python3-devel
@@ -514,35 +515,28 @@ build_samba_from_srpm() {
       step_info "Rebuilding from scratch as requested..."
     fi
   fi
-  # ── Build prerequisites: NOT installed on host, intentionally ────────────
-  # REAL INCIDENT (2026-07-23): this used to `dnf -y install` a BUILD_DEPS
-  # array of -devel headers here (@development-tools, libtalloc-devel,
-  # libtevent-devel, libldb-devel, krb5-devel, avahi-devel, openldap-devel,
-  # gnutls-devel, etc.), then strip them back out after the build via an
-  # "appliance hardening" removal step. That removal step turned out to be
-  # unsafe on two separate fresh installs: dnf's dependency solver cascaded
-  # past the intended -devel/gcc packages and also erased samba-dc,
-  # samba-tools, python3-samba, python3-samba-dc, krb5-server, avahi,
-  # certmonger, and cepces — this custom mock "DC flavor" build apparently
-  # gives those runtime packages a Requires back onto one or more of the
-  # -devel packages above. A --setopt=protected_packages guard was tried and
-  # did NOT stop the cascade either (it only blocks removing a protected
-  # package by name/via autoremove, not a Requires-driven removal triggered
-  # by removing something else) — confirmed via /var/log/dnf.rpm.log on a
-  # second box after the "fix".
-  #
-  # The actual fix: don't install any of this on the host at all. mock
-  # resolves 100% of Samba's BuildRequires itself, inside its own isolated
-  # chroot, via config_opts['dnf_builddep_opts'] below — that's the whole
-  # reason samba_update.py's on-demand rebuild pipeline never installs a
-  # single host-level -devel package and still builds fine. These host
-  # copies were never load-bearing for the compile; they were also the
-  # exact packages behind the original `dnf update` deadlock incident
-  # (exact-NVR-pinned against glibc/glib2 from the `devel` repo, drifting
-  # out of sync with baseos/appstream over time). Skipping the install here
-  # closes both bugs at once and means there's nothing left to clean up
-  # afterward.
-  step_ok "Build dependencies resolved by mock inside its isolated chroot (nothing installed on host)"
+  # ── Install build prerequisites ──────────────────────────────────────────
+  local BUILD_DEPS=(
+    "@development-tools"
+    python3-devel gnutls-devel libacl-devel openldap-devel
+    pam-devel cups-libs libtalloc-devel libtevent-devel
+    libldb-devel libtdb-devel libwbclient-devel
+    samba-common-libs krb5-devel avahi-devel dbus-devel
+    perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt
+    quota-devel libaio-devel iniparser-devel
+    gpgme-devel jansson-devel libnsl2-devel
+    python3-dns python3-markdown
+  )
+  # One dot per package as it actually finishes installing — real progress
+  # tied to completed work, not just elapsed time, same idea as the repo
+  # metadata refresh ticker above.
+  printf "  ${YELLOW}→${TEXTRESET} Installing Samba build dependencies "
+  for dep in "${BUILD_DEPS[@]}"; do
+    dnf -y install "$dep" --setopt=tsflags=nodocs --color=never >>"$log" 2>&1 || true
+    printf "."
+  done
+  echo ""
+  step_ok "Build dependencies installed (${#BUILD_DEPS[@]} packages)"
   # ── Configure mock ────────────────────────────────────────────────────────
   step_info "Setting up mock build environment for Rocky 10..."
   usermod -a -G mock root >>"$log" 2>&1 || true
@@ -813,21 +807,31 @@ _install_samba_rpms() {
   else
     step_info "samba.smbd not found in samba3/ — provision may fail"
   fi
-  # ── Appliance hardening, take 3 ───────────────────────────────────────────
-  # Nothing to remove here anymore — see the comment above build_samba_from_srpm's
-  # old BUILD_DEPS block. We never installed host-level -devel headers or
-  # @development-tools in the first place (mock resolved everything itself),
-  # so there's no package-removal cascade risk left to guard against. The one
-  # thing still worth doing is making sure "devel" (enabled early in the
-  # install for `dnf download --source samba` / mock's own --enablerepo=devel)
-  # doesn't stay enabled indefinitely — a plain repo disable, no package
-  # removal, so no Requires-cascade risk.
+  # ── Appliance hardening: remove build-only tooling now that Samba's built ──
+  # This is meant to be an appliance — nobody should ever need a compiler on
+  # the console. The mock chroot used above (and reused later by
+  # samba_update.py's on-demand rebuild pipeline) builds Samba in its own
+  # isolated root with its own dependencies; none of these host-level -devel
+  # headers or @development-tools are needed for that. Leaving them installed
+  # long-term is actively harmful: they're exact-NVR-pinned against glibc/
+  # glib2/etc from the devel repo, and once baseos/appstream move past that
+  # pin (which happens on a routine schedule), every future `dnf update`
+  # deadlocks with unresolvable dependency errors (real incident, 2026-07).
+  # mock/createrepo_c/rpm-build are deliberately NOT removed — samba_update.py's
+  # rebuild pipeline calls them directly without reinstalling first.
+  step_info "Removing build-only tooling (appliance hardening)..."
+  dnf -y groupremove "Development Tools" >/dev/null 2>&1 || true
+  dnf -y remove gcc \
+    python3-devel gnutls-devel libacl-devel openldap-devel \
+    libtalloc-devel libtevent-devel libldb-devel libtdb-devel \
+    libwbclient-devel krb5-devel avahi-devel dbus-devel \
+    perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt \
+    quota-devel libaio-devel iniparser-devel gpgme-devel \
+    jansson-devel libnsl2-devel python3-dns python3-markdown \
+    >/dev/null 2>&1 || true
+  dnf -y autoremove >/dev/null 2>&1 || true
   dnf config-manager --set-disabled devel >/dev/null 2>&1 || true
-  if ! command -v samba-tool >/dev/null 2>&1; then
-    step_fail "samba-tool missing after Samba RPM install — investigate before provisioning"
-  else
-    step_ok "'devel' repo disabled — no build tooling was ever installed on host to clean up"
-  fi
+  step_ok "Build tooling removed (mock/createrepo_c/rpm-build kept for future Samba rebuilds), 'devel' disabled"
 }
 # =============================================================
 # STEP 17 — PROVISION SAMBA AD
@@ -868,6 +872,17 @@ provision_samba_ad() {
   # has a fragmented virtual address space.  When samba-tool forks from it,
   # TALLOC's mmap calls fail to find contiguous regions → MemoryError.
   # Running via systemd-run has PID 1 spawn provision with a clean address space.
+  #
+  # REAL INCIDENT (2026-07-23): even with systemd-run, samba-tool's own sysvol
+  # ACL step (setsysvolacl → smbd.set_simple_acl) reliably crashed with an
+  # uncaught MemoryError when provisioning ran immediately after the RPM
+  # install transaction finished — reproduced on two consecutive fresh full
+  # rebuilds, confirmed via samba-provision.log both times. A manual retry run
+  # a minute or two later (after typing a few commands) never hit it, so a
+  # short settle pause here is cheap insurance against the timing window.
+  step_info "Letting the system settle after the RPM install before provisioning..."
+  sync
+  sleep 5
   local _prov_log="${log%/*}/samba-provision.log"
   echo "[provision] realm=${AD_REALM} domain=${AD_DOMAIN}" > "$_prov_log"
   echo "[provision] realm=${AD_REALM} domain=${AD_DOMAIN}" >> "$log"
@@ -887,6 +902,22 @@ provision_samba_ad() {
     step_fail "Samba AD provisioning failed — see ${_prov_log}"
     dialog --title "Provision Failed" --msgbox "Samba AD provisioning failed.\nSee: ${_prov_log}" 8 60
     exit 1
+  fi
+  # samba-tool's own netcmd error handler can catch an internal exception deep
+  # in provisioning (confirmed case: MemoryError in setsysvolacl), print
+  # "ERROR(<class '...'>): uncaught exception", and STILL exit 0 — so
+  # PROVISION_RC alone does not reliably catch this failure mode. Everything
+  # before that point (schema, forest/domain updates, DNS, Kerberos config)
+  # had already completed successfully in both observed cases, so rather than
+  # re-running the entire multi-minute provision, just redo the sysvol ACL
+  # pass with the command Samba itself documents for exactly this repair.
+  if grep -q "^ERROR(" "$_prov_log" 2>/dev/null; then
+    step_info "Provision reported success but logged an internal error — repairing sysvol ACLs..."
+    if samba-tool ntacl sysvolreset >>"$log" 2>&1; then
+      step_ok "Sysvol ACLs repaired via 'samba-tool ntacl sysvolreset'"
+    else
+      step_fail "Sysvol ACL repair failed — see ${log} (domain is provisioned but sysvol permissions may be wrong; rerun 'samba-tool ntacl sysvolreset' manually)"
+    fi
   fi
   step_ok "Samba AD provisioned (Realm: ${AD_REALM})"
   # ── Kerberos — install krb5.conf before starting Samba ─────────────────
