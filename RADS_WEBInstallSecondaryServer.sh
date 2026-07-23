@@ -859,8 +859,27 @@ _install_samba_rpms() {
   # deadlocks with unresolvable dependency errors (real incident, 2026-07).
   # mock/createrepo_c/rpm-build are deliberately NOT removed — samba_update.py's
   # rebuild pipeline calls them directly without reinstalling first.
+  #
+  # REAL INCIDENT (2026-07-23, first live test on a fresh install): this block's
+  # `dnf -y remove` cascaded past the intended -devel/gcc packages and also
+  # erased samba-dc, samba-tools, python3-samba, python3-samba-dc,
+  # python3-samba-test, krb5-server, avahi, certmonger, and cepces — because
+  # this custom mock "DC flavor" build apparently generated runtime Requires
+  # from those packages back onto one or more of the -devel packages below
+  # (confirmed via /var/log/dnf.rpm.log: the erases landed inside the `dnf -y
+  # remove gcc ...` transaction itself, not the later `autoremove`). The end
+  # result was a DC with no `samba-tool` binary at all — domain provisioning
+  # failed instantly with nothing useful logged.
+  #
+  # Fix: use --setopt=protected_packages so dnf REFUSES to remove anything
+  # matching these globs, even if its own solver thinks it's an orphan. If a
+  # removal would require touching a protected package, dnf aborts that whole
+  # transaction (no partial damage) and we just move on via `|| true` — worst
+  # case some -devel cruft is left behind, which is far safer than silently
+  # deleting the AD DC itself.
+  local _PROTECT="samba*,python3-samba*,python3-tdb,python3-tevent,python3-talloc,python3-ldb,krb5-server,krb5-libs,avahi,avahi-libs,certmonger,cepces*,ctdb,ldb-tools,mock,createrepo_c,rpm-build"
   step_info "Removing build-only tooling (appliance hardening)..."
-  dnf -y groupremove "Development Tools" >/dev/null 2>&1 || true
+  dnf -y groupremove "Development Tools" --setopt=protected_packages="${_PROTECT}" >/dev/null 2>&1 || true
   dnf -y remove gcc \
     python3-devel gnutls-devel libacl-devel openldap-devel \
     libtalloc-devel libtevent-devel libldb-devel libtdb-devel \
@@ -868,10 +887,17 @@ _install_samba_rpms() {
     perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt \
     quota-devel libaio-devel iniparser-devel gpgme-devel \
     jansson-devel libnsl2-devel python3-dns python3-markdown \
+    --setopt=protected_packages="${_PROTECT}" \
     >/dev/null 2>&1 || true
-  dnf -y autoremove >/dev/null 2>&1 || true
+  dnf -y autoremove --setopt=protected_packages="${_PROTECT}" >/dev/null 2>&1 || true
   dnf config-manager --set-disabled devel >/dev/null 2>&1 || true
-  step_ok "Build tooling removed (mock/createrepo_c/rpm-build kept for future Samba rebuilds), 'devel' disabled"
+  # Sanity check: if samba-tool is gone despite the guard above, don't pretend
+  # everything's fine — surface it loudly instead of a silent later failure.
+  if ! command -v samba-tool >/dev/null 2>&1; then
+    step_fail "samba-tool missing after build-tooling cleanup — skipping further removal, investigate before provisioning"
+  else
+    step_ok "Build tooling removed (mock/createrepo_c/rpm-build kept for future Samba rebuilds), 'devel' disabled"
+  fi
 }
 # =============================================================
 # STEP 19 — JOIN EXISTING SAMBA AD DOMAIN
