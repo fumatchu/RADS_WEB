@@ -608,24 +608,20 @@ build_samba_from_srpm() {
       step_info "Rebuilding from scratch as requested..."
     fi
   fi
-  local BUILD_DEPS=(
-    "@development-tools"
-    python3-devel gnutls-devel libacl-devel openldap-devel
-    pam-devel cups-libs libtalloc-devel libtevent-devel
-    libldb-devel libtdb-devel libwbclient-devel
-    samba-common-libs krb5-devel avahi-devel dbus-devel
-    perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt
-    quota-devel libaio-devel iniparser-devel
-    gpgme-devel jansson-devel libnsl2-devel
-    python3-dns python3-markdown
-  )
-  printf "  ${YELLOW}→${TEXTRESET} Installing Samba build dependencies "
-  for dep in "${BUILD_DEPS[@]}"; do
-    dnf -y install "$dep" --setopt=tsflags=nodocs --color=never >>"$log" 2>&1 || true
-    printf "."
-  done
-  echo ""
-  step_ok "Build dependencies installed (${#BUILD_DEPS[@]} packages)"
+  # ── Build prerequisites: NOT installed on host, intentionally ────────────
+  # See RADS_WEBInstallFirstServer.sh for the full incident writeup. Short
+  # version: a host-level BUILD_DEPS install (@development-tools + a pile of
+  # -devel headers) followed by an "appliance hardening" removal step caused
+  # dnf's solver to cascade-erase samba-dc/samba-tools/python3-samba/
+  # krb5-server/avahi/certmonger/cepces on multiple fresh installs — a
+  # --setopt=protected_packages guard did NOT stop it either. mock resolves
+  # 100% of Samba's BuildRequires itself inside its own isolated chroot
+  # (config_opts['dnf_builddep_opts'] below), so none of this was ever
+  # load-bearing for the compile — it was also the exact package class behind
+  # the original `dnf update` deadlock incident (exact-NVR-pinned against
+  # glibc/glib2 from the devel repo). Skipping the install here closes both
+  # bugs and leaves nothing to clean up afterward.
+  step_ok "Build dependencies resolved by mock inside its isolated chroot (nothing installed on host)"
   step_info "Setting up mock build environment for Rocky 10..."
   usermod -a -G mock root >>"$log" 2>&1 || true
   local SRPM_DIR="/root/samba-srpm"
@@ -847,31 +843,21 @@ _install_samba_rpms() {
   else
     step_info "samba.smbd not found in samba3/ — join may fail"
   fi
-  # ── Appliance hardening: remove build-only tooling now that Samba's built ──
-  # This is meant to be an appliance — nobody should ever need a compiler on
-  # the console. The mock chroot used above (and reused later by
-  # samba_update.py's on-demand rebuild pipeline) builds Samba in its own
-  # isolated root with its own dependencies; none of these host-level -devel
-  # headers or @development-tools are needed for that. Leaving them installed
-  # long-term is actively harmful: they're exact-NVR-pinned against glibc/
-  # glib2/etc from the devel repo, and once baseos/appstream move past that
-  # pin (which happens on a routine schedule), every future `dnf update`
-  # deadlocks with unresolvable dependency errors (real incident, 2026-07).
-  # mock/createrepo_c/rpm-build are deliberately NOT removed — samba_update.py's
-  # rebuild pipeline calls them directly without reinstalling first.
-  step_info "Removing build-only tooling (appliance hardening)..."
-  dnf -y groupremove "Development Tools" >/dev/null 2>&1 || true
-  dnf -y remove gcc \
-    python3-devel gnutls-devel libacl-devel openldap-devel \
-    libtalloc-devel libtevent-devel libldb-devel libtdb-devel \
-    libwbclient-devel krb5-devel avahi-devel dbus-devel \
-    perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt \
-    quota-devel libaio-devel iniparser-devel gpgme-devel \
-    jansson-devel libnsl2-devel python3-dns python3-markdown \
-    >/dev/null 2>&1 || true
-  dnf -y autoremove >/dev/null 2>&1 || true
+  # ── Appliance hardening, take 3 ───────────────────────────────────────────
+  # Nothing to remove here anymore — see the comment above where BUILD_DEPS
+  # used to be installed. We never install host-level -devel headers or
+  # @development-tools in the first place (mock resolves everything itself),
+  # so there's no package-removal cascade risk left to guard against. The one
+  # thing still worth doing is making sure "devel" (enabled early in the
+  # install for `dnf download --source samba` / mock's own --enablerepo=devel)
+  # doesn't stay enabled indefinitely — a plain repo disable, no package
+  # removal, so no Requires-cascade risk.
   dnf config-manager --set-disabled devel >/dev/null 2>&1 || true
-  step_ok "Build tooling removed (mock/createrepo_c/rpm-build kept for future Samba rebuilds), 'devel' disabled"
+  if ! command -v samba-tool >/dev/null 2>&1; then
+    step_fail "samba-tool missing after Samba RPM install — investigate before joining"
+  else
+    step_ok "'devel' repo disabled — no build tooling was ever installed on host to clean up"
+  fi
 }
 # =============================================================
 # STEP 19 — JOIN EXISTING SAMBA AD DOMAIN
