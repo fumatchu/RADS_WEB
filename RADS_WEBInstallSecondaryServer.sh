@@ -847,6 +847,31 @@ _install_samba_rpms() {
   else
     step_info "samba.smbd not found in samba3/ — join may fail"
   fi
+  # ── Appliance hardening: remove build-only tooling now that Samba's built ──
+  # This is meant to be an appliance — nobody should ever need a compiler on
+  # the console. The mock chroot used above (and reused later by
+  # samba_update.py's on-demand rebuild pipeline) builds Samba in its own
+  # isolated root with its own dependencies; none of these host-level -devel
+  # headers or @development-tools are needed for that. Leaving them installed
+  # long-term is actively harmful: they're exact-NVR-pinned against glibc/
+  # glib2/etc from the devel repo, and once baseos/appstream move past that
+  # pin (which happens on a routine schedule), every future `dnf update`
+  # deadlocks with unresolvable dependency errors (real incident, 2026-07).
+  # mock/createrepo_c/rpm-build are deliberately NOT removed — samba_update.py's
+  # rebuild pipeline calls them directly without reinstalling first.
+  step_info "Removing build-only tooling (appliance hardening)..."
+  dnf -y groupremove "Development Tools" >/dev/null 2>&1 || true
+  dnf -y remove gcc \
+    python3-devel gnutls-devel libacl-devel openldap-devel \
+    libtalloc-devel libtevent-devel libldb-devel libtdb-devel \
+    libwbclient-devel krb5-devel avahi-devel dbus-devel \
+    perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt \
+    quota-devel libaio-devel iniparser-devel gpgme-devel \
+    jansson-devel libnsl2-devel python3-dns python3-markdown \
+    >/dev/null 2>&1 || true
+  dnf -y autoremove >/dev/null 2>&1 || true
+  dnf config-manager --set-disabled devel >/dev/null 2>&1 || true
+  step_ok "Build tooling removed (mock/createrepo_c/rpm-build kept for future Samba rebuilds), 'devel' disabled"
 }
 # =============================================================
 # STEP 19 — JOIN EXISTING SAMBA AD DOMAIN
