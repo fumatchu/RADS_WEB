@@ -367,12 +367,11 @@ install_base_packages() {
   section "Base Packages"
   local log="$LOGDIR/packages.log"; : > "$log"
   local PKGS=(
-    gcc make tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
+    tar bzip2-devel openssl openssl-devel libffi-devel zlib-devel
     rpmbuild rpm-build mock createrepo_c
     krb5-workstation openldap-clients bind-utils
     chrony net-tools dmidecode ipcalc
     ntsysv wget curl rsync
-    nano htop iotop iptraf-ng mc
     fail2ban
     httpd mod_ssl mod_proxy_html
     python3 python3-pip python3-psutil pam-devel python3-devel
