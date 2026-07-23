@@ -515,28 +515,35 @@ build_samba_from_srpm() {
       step_info "Rebuilding from scratch as requested..."
     fi
   fi
-  # ── Install build prerequisites ──────────────────────────────────────────
-  local BUILD_DEPS=(
-    "@development-tools"
-    python3-devel gnutls-devel libacl-devel openldap-devel
-    pam-devel cups-libs libtalloc-devel libtevent-devel
-    libldb-devel libtdb-devel libwbclient-devel
-    samba-common-libs krb5-devel avahi-devel dbus-devel
-    perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt
-    quota-devel libaio-devel iniparser-devel
-    gpgme-devel jansson-devel libnsl2-devel
-    python3-dns python3-markdown
-  )
-  # One dot per package as it actually finishes installing — real progress
-  # tied to completed work, not just elapsed time, same idea as the repo
-  # metadata refresh ticker above.
-  printf "  ${YELLOW}→${TEXTRESET} Installing Samba build dependencies "
-  for dep in "${BUILD_DEPS[@]}"; do
-    dnf -y install "$dep" --setopt=tsflags=nodocs --color=never >>"$log" 2>&1 || true
-    printf "."
-  done
-  echo ""
-  step_ok "Build dependencies installed (${#BUILD_DEPS[@]} packages)"
+  # ── Build prerequisites: NOT installed on host, intentionally ────────────
+  # REAL INCIDENT (2026-07-23): this used to `dnf -y install` a BUILD_DEPS
+  # array of -devel headers here (@development-tools, libtalloc-devel,
+  # libtevent-devel, libldb-devel, krb5-devel, avahi-devel, openldap-devel,
+  # gnutls-devel, etc.), then strip them back out after the build via an
+  # "appliance hardening" removal step. That removal step turned out to be
+  # unsafe on two separate fresh installs: dnf's dependency solver cascaded
+  # past the intended -devel/gcc packages and also erased samba-dc,
+  # samba-tools, python3-samba, python3-samba-dc, krb5-server, avahi,
+  # certmonger, and cepces — this custom mock "DC flavor" build apparently
+  # gives those runtime packages a Requires back onto one or more of the
+  # -devel packages above. A --setopt=protected_packages guard was tried and
+  # did NOT stop the cascade either (it only blocks removing a protected
+  # package by name/via autoremove, not a Requires-driven removal triggered
+  # by removing something else) — confirmed via /var/log/dnf.rpm.log on a
+  # second box after the "fix".
+  #
+  # The actual fix: don't install any of this on the host at all. mock
+  # resolves 100% of Samba's BuildRequires itself, inside its own isolated
+  # chroot, via config_opts['dnf_builddep_opts'] below — that's the whole
+  # reason samba_update.py's on-demand rebuild pipeline never installs a
+  # single host-level -devel package and still builds fine. These host
+  # copies were never load-bearing for the compile; they were also the
+  # exact packages behind the original `dnf update` deadlock incident
+  # (exact-NVR-pinned against glibc/glib2 from the `devel` repo, drifting
+  # out of sync with baseos/appstream over time). Skipping the install here
+  # closes both bugs at once and means there's nothing left to clean up
+  # afterward.
+  step_ok "Build dependencies resolved by mock inside its isolated chroot (nothing installed on host)"
   # ── Configure mock ────────────────────────────────────────────────────────
   step_info "Setting up mock build environment for Rocky 10..."
   usermod -a -G mock root >>"$log" 2>&1 || true
@@ -807,56 +814,20 @@ _install_samba_rpms() {
   else
     step_info "samba.smbd not found in samba3/ — provision may fail"
   fi
-  # ── Appliance hardening: remove build-only tooling now that Samba's built ──
-  # This is meant to be an appliance — nobody should ever need a compiler on
-  # the console. The mock chroot used above (and reused later by
-  # samba_update.py's on-demand rebuild pipeline) builds Samba in its own
-  # isolated root with its own dependencies; none of these host-level -devel
-  # headers or @development-tools are needed for that. Leaving them installed
-  # long-term is actively harmful: they're exact-NVR-pinned against glibc/
-  # glib2/etc from the devel repo, and once baseos/appstream move past that
-  # pin (which happens on a routine schedule), every future `dnf update`
-  # deadlocks with unresolvable dependency errors (real incident, 2026-07).
-  # mock/createrepo_c/rpm-build are deliberately NOT removed — samba_update.py's
-  # rebuild pipeline calls them directly without reinstalling first.
-  #
-  # REAL INCIDENT (2026-07-23, first live test on a fresh install): this block's
-  # `dnf -y remove` cascaded past the intended -devel/gcc packages and also
-  # erased samba-dc, samba-tools, python3-samba, python3-samba-dc,
-  # python3-samba-test, krb5-server, avahi, certmonger, and cepces — because
-  # this custom mock "DC flavor" build apparently generated runtime Requires
-  # from those packages back onto one or more of the -devel packages below
-  # (confirmed via /var/log/dnf.rpm.log: the erases landed inside the `dnf -y
-  # remove gcc ...` transaction itself, not the later `autoremove`). The end
-  # result was a DC with no `samba-tool` binary at all — domain provisioning
-  # failed instantly with nothing useful logged.
-  #
-  # Fix: use --setopt=protected_packages so dnf REFUSES to remove anything
-  # matching these globs, even if its own solver thinks it's an orphan. If a
-  # removal would require touching a protected package, dnf aborts that whole
-  # transaction (no partial damage) and we just move on via `|| true` — worst
-  # case some -devel cruft is left behind, which is far safer than silently
-  # deleting the AD DC itself.
-  local _PROTECT="samba*,python3-samba*,python3-tdb,python3-tevent,python3-talloc,python3-ldb,krb5-server,krb5-libs,avahi,avahi-libs,certmonger,cepces*,ctdb,ldb-tools,mock,createrepo_c,rpm-build"
-  step_info "Removing build-only tooling (appliance hardening)..."
-  dnf -y groupremove "Development Tools" --setopt=protected_packages="${_PROTECT}" >/dev/null 2>&1 || true
-  dnf -y remove gcc \
-    python3-devel gnutls-devel libacl-devel openldap-devel \
-    libtalloc-devel libtevent-devel libldb-devel libtdb-devel \
-    libwbclient-devel krb5-devel avahi-devel dbus-devel \
-    perl-Parse-Yapp perl-JSON docbook-style-xsl libxslt \
-    quota-devel libaio-devel iniparser-devel gpgme-devel \
-    jansson-devel libnsl2-devel python3-dns python3-markdown \
-    --setopt=protected_packages="${_PROTECT}" \
-    >/dev/null 2>&1 || true
-  dnf -y autoremove --setopt=protected_packages="${_PROTECT}" >/dev/null 2>&1 || true
+  # ── Appliance hardening, take 3 ───────────────────────────────────────────
+  # Nothing to remove here anymore — see the comment above build_samba_from_srpm's
+  # old BUILD_DEPS block. We never installed host-level -devel headers or
+  # @development-tools in the first place (mock resolved everything itself),
+  # so there's no package-removal cascade risk left to guard against. The one
+  # thing still worth doing is making sure "devel" (enabled early in the
+  # install for `dnf download --source samba` / mock's own --enablerepo=devel)
+  # doesn't stay enabled indefinitely — a plain repo disable, no package
+  # removal, so no Requires-cascade risk.
   dnf config-manager --set-disabled devel >/dev/null 2>&1 || true
-  # Sanity check: if samba-tool is gone despite the guard above, don't pretend
-  # everything's fine — surface it loudly instead of a silent later failure.
   if ! command -v samba-tool >/dev/null 2>&1; then
-    step_fail "samba-tool missing after build-tooling cleanup — skipping further removal, investigate before provisioning"
+    step_fail "samba-tool missing after Samba RPM install — investigate before provisioning"
   else
-    step_ok "Build tooling removed (mock/createrepo_c/rpm-build kept for future Samba rebuilds), 'devel' disabled"
+    step_ok "'devel' repo disabled — no build tooling was ever installed on host to clean up"
   fi
 }
 # =============================================================
