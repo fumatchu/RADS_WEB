@@ -157,8 +157,8 @@ and let the installer manage its own dependencies rather than pre-installing pac
 ### After Install
 
 Once the installer finishes, RADS-WEB is reachable over HTTPS at the server's hostname (your browser will warn
-once about the self-signed certificate — that's expected). Sign in with the domain `Administrator` account to
-authenticate against Active Directory and unlock the dashboard.
+once about the self-signed certificate — that's expected). Sign in with the linux `root` account to
+authenticate and unlock the dashboard.
 
 ---
 
